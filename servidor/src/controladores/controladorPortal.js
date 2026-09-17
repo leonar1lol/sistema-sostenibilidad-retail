@@ -16,24 +16,29 @@ export const solicitarAcceso = async (peticion, respuesta) => {
     return respuesta.status(400).json({ exito: false, mensaje: 'El correo electrónico es requerido.' });
   }
 
-  const valor = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiracion = new Date(Date.now() + MINUTOS_OTP * 60 * 1000);
+  try {
+    const valor = Math.floor(100000 + Math.random() * 900000).toString();
 
-  await consultarBaseDatos(
-    'INSERT INTO codigo_otp (correo, valor, expiracion, usado) VALUES ($1, $2, $3, FALSE)',
-    [correo.toLowerCase(), valor, expiracion]
-  );
+    await consultarBaseDatos(
+      `INSERT INTO codigo_otp (correo, valor, expiracion, usado)
+       VALUES ($1, $2, now() + interval '${MINUTOS_OTP} minutes', FALSE)`,
+      [correo.toLowerCase(), valor]
+    );
 
-  const enviadoPorCorreo = await enviarCodigoAccesoOtp(correo, valor);
+    const enviadoPorCorreo = await enviarCodigoAccesoOtp(correo, valor);
 
-  const respuestaJson = enviadoPorCorreo
-    ? { exito: true, mensaje: 'Código enviado. Revise su bandeja de entrada.' }
-    : {
-        exito: true,
-        mensaje: 'Servicio de correo aún no configurado: use el código de demostración provisto.',
-        codigoDemostracion: valor
-      };
-  return respuesta.status(200).json(respuestaJson);
+    const respuestaJson = enviadoPorCorreo
+      ? { exito: true, mensaje: 'Código enviado. Revise su bandeja de entrada.' }
+      : {
+          exito: true,
+          mensaje: 'Servicio de correo aún no configurado: use el código de demostración provisto.',
+          codigoDemostracion: valor
+        };
+    return respuesta.status(200).json(respuestaJson);
+  } catch (error) {
+    console.error('Error en solicitarAcceso:', error);
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al procesar el código de acceso.' });
+  }
 };
 
 export const verificarAcceso = async (peticion, respuesta) => {
@@ -127,12 +132,12 @@ export const registrarProveedor = async (peticion, respuesta) => {
       let idCampaniaResuelta = idCampania;
       if (!idCampaniaResuelta) {
         const campaniaActiva = await cliente.query(
-          `SELECT id_campania FROM campania WHERE estado = 'Publicada' ORDER BY id_campania DESC LIMIT 1`
+          `SELECT id_campania FROM campania WHERE estado IN ('Publicada', 'Activa') ORDER BY id_campania DESC LIMIT 1`
         );
         idCampaniaResuelta = campaniaActiva.rows[0]?.id_campania;
       }
       if (!idCampaniaResuelta) {
-        throw Object.assign(new Error('No hay ninguna campaña publicada activa en este momento.'), { codigoHttp: 409 });
+        throw Object.assign(new Error('No hay ninguna campaña activa en este momento.'), { codigoHttp: 409 });
       }
 
       const tokenEvaluacion = crypto.randomBytes(24).toString('hex');

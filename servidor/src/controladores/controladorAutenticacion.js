@@ -68,6 +68,7 @@ export const iniciarSesion = async (peticion, respuesta) => {
       }
     });
   } catch (error) {
+    console.error('Error en iniciarSesion:', error);
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al iniciar sesión.' });
   }
 };

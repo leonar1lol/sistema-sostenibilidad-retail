@@ -12,6 +12,7 @@ const CLAVE_DEMO = 'Admin2026';
 
 const usuarios = [
   { correo: 'admin@intercorpretail.pe', nombre: 'Leonardo Raul Solano Pio Huaman', rol: 'Administrador Corporativo', unidad: null },
+  { correo: 'lsolano@intercorpretail.pe', nombre: 'Leonardo Raul Solano Pio Huaman', rol: 'Administrador Corporativo', unidad: null },
   { correo: 'ccoronel@intercorpretail.pe', nombre: 'Carloman Coronel Cruz', rol: 'Gerente de Unidad de Negocio', unidad: 'SPSA' },
   { correo: 'cchiroque@intercorpretail.pe', nombre: 'Carlos Juniors Chiroque Silva', rol: 'Analista de Unidad de Negocio', unidad: 'PRO' },
   { correo: 'fbeltran@intercorpretail.pe', nombre: 'Frank Alex Beltran Ponce', rol: 'Gerente de Unidad de Negocio', unidad: 'OEC' },
@@ -21,6 +22,9 @@ const usuarios = [
 async function poblar() {
   const cliente = new Client({ connectionString: process.env.URL_BASE_DATOS, ssl: { rejectUnauthorized: false } });
   await cliente.connect();
+
+  try { await cliente.query('ALTER TABLE usuario RENAME COLUMN fk_id_rol TO id_rol'); } catch {}
+  try { await cliente.query('ALTER TABLE usuario RENAME COLUMN fk_id_unidad TO id_unidad'); } catch {}
 
   const claveHash = await bcrypt.hash(CLAVE_DEMO, 10);
 
