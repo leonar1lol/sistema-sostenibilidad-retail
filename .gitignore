@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.production
+.env.local
+.env.deploy.yaml
+
+# Google Cloud service account keys (downloaded to project root)
+/plataforma-sostenibilidad-*.json
+
+# Wrangler local cache
+.wrangler
+
+# Reportes exportados manualmente durante pruebas (pueden caer en la raíz por el navegador)
+/Reporte_Proveedores_*.csv
