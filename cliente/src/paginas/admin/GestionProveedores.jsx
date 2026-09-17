@@ -372,6 +372,62 @@ export default function GestionProveedores() {
                 </p>
               )}
 
+              <div className="p-4 rounded-md-token bg-black/[0.015] border border-black/[0.04] space-y-2 text-cuerpo-pequeno">
+                <span className="text-etiqueta text-plataformaSecundario block mb-1 uppercase font-semibold text-[10px]">
+                  Datos Corporativos y Operativos
+                </span>
+                {proveedorSeleccionado.nombreComercial && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Nombre comercial:</span>
+                    <span className="font-medium text-plataformaTexto">{proveedorSeleccionado.nombreComercial}</span>
+                  </div>
+                )}
+                {proveedorSeleccionado.direccionFiscal && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Dirección fiscal:</span>
+                    <span className="font-medium text-plataformaTexto text-right truncate max-w-[240px]">{proveedorSeleccionado.direccionFiscal}</span>
+                  </div>
+                )}
+                {proveedorSeleccionado.departamento && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Región:</span>
+                    <span className="font-medium text-plataformaTexto">{proveedorSeleccionado.departamento}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-plataformaSecundario">Contacto:</span>
+                  <span className="font-medium text-plataformaTexto">
+                    {proveedorSeleccionado.representante} {proveedorSeleccionado.cargoRepresentante ? `(${proveedorSeleccionado.cargoRepresentante})` : ''}
+                  </span>
+                </div>
+                {proveedorSeleccionado.telefono && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Teléfono:</span>
+                    <span className="font-medium text-plataformaTexto">{proveedorSeleccionado.telefono}</span>
+                  </div>
+                )}
+                {proveedorSeleccionado.tamanoEmpresa && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Tamaño:</span>
+                    <span className="font-medium text-plataformaTexto">{proveedorSeleccionado.tamanoEmpresa}</span>
+                  </div>
+                )}
+                {proveedorSeleccionado.aniosOperacion && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Trayectoria:</span>
+                    <span className="font-medium text-plataformaTexto">{proveedorSeleccionado.aniosOperacion}</span>
+                  </div>
+                )}
+                {proveedorSeleccionado.sitioWeb && (
+                  <div className="flex justify-between">
+                    <span className="text-plataformaSecundario">Sitio web:</span>
+                    <a href={proveedorSeleccionado.sitioWeb} target="_blank" rel="noreferrer" className="font-medium text-plataformaAzul hover:underline truncate max-w-[200px]">
+                      {proveedorSeleccionado.sitioWeb}
+                    </a>
+                  </div>
+                )}
+              </div>
+
               <div className="pt-2">
                 <span className="text-etiqueta text-plataformaSecundario block mb-2">Evidencia documental (RF25)</span>
                 <EvidenciaFicha idProveedor={proveedorSeleccionado.idProveedor} />

@@ -40,16 +40,24 @@ CREATE TABLE IF NOT EXISTS industria (
 );
 
 CREATE TABLE IF NOT EXISTS proveedor (
-  id_proveedor  SERIAL PRIMARY KEY,
-  ruc           VARCHAR(11) NOT NULL UNIQUE,
-  razon_social  VARCHAR(200) NOT NULL,
-  representante VARCHAR(160),
-  correo        VARCHAR(160) NOT NULL,
-  tipo          VARCHAR(20) NOT NULL CHECK (tipo IN ('Retail','No retail')),
-  es_critico    BOOLEAN NOT NULL DEFAULT FALSE,
-  id_unidad     INT NOT NULL REFERENCES unidad_negocio(id_unidad),
-  id_industria  INT REFERENCES industria(id_industria),
-  creado_en     TIMESTAMPTZ NOT NULL DEFAULT now()
+  id_proveedor        SERIAL PRIMARY KEY,
+  ruc                 VARCHAR(11) NOT NULL UNIQUE,
+  razon_social        VARCHAR(200) NOT NULL,
+  nombre_comercial    VARCHAR(200),
+  direccion_fiscal    VARCHAR(255),
+  departamento        VARCHAR(100),
+  representante       VARCHAR(160),
+  cargo_representante VARCHAR(120),
+  telefono            VARCHAR(30),
+  correo              VARCHAR(160) NOT NULL,
+  tipo                VARCHAR(20) NOT NULL CHECK (tipo IN ('Retail','No retail')),
+  tamano_empresa      VARCHAR(80),
+  anios_operacion     VARCHAR(50),
+  sitio_web           VARCHAR(255),
+  es_critico          BOOLEAN NOT NULL DEFAULT FALSE,
+  id_unidad           INT NOT NULL REFERENCES unidad_negocio(id_unidad),
+  id_industria        INT REFERENCES industria(id_industria),
+  creado_en           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS dimension (

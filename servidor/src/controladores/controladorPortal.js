@@ -64,7 +64,11 @@ export const verificarAcceso = async (peticion, respuesta) => {
 
       const proveedor = await cliente.query(
         `SELECT id_proveedor AS "idProveedor", ruc, razon_social AS "razonSocial", representante,
-                tipo, id_unidad AS "idUnidad", id_industria AS "idIndustria"
+                tipo, id_unidad AS "idUnidad", id_industria AS "idIndustria",
+                nombre_comercial AS "nombreComercial", direccion_fiscal AS "direccionFiscal",
+                departamento, cargo_representante AS "cargoRepresentante", telefono,
+                tamano_empresa AS "tamanoEmpresa", anios_operacion AS "aniosOperacion",
+                sitio_web AS "sitioWeb"
          FROM proveedor WHERE correo = $1`,
         [correo.toLowerCase()]
       );
@@ -92,7 +96,23 @@ export const verificarAcceso = async (peticion, respuesta) => {
 };
 
 export const registrarProveedor = async (peticion, respuesta) => {
-  const { ruc, razonSocial, representante, idIndustria, tipo, idCampania, idUnidad } = peticion.body;
+  const {
+    ruc,
+    razonSocial,
+    nombreComercial,
+    direccionFiscal,
+    departamento,
+    representante,
+    cargoRepresentante,
+    telefono,
+    idIndustria,
+    tipo,
+    tamanoEmpresa,
+    aniosOperacion,
+    sitioWeb,
+    idCampania,
+    idUnidad
+  } = peticion.body;
   const { correo, idProveedor: idProveedorSesion } = peticion.sesionProveedor;
 
   if (!ruc || !razonSocial || !idIndustria) {
@@ -108,9 +128,37 @@ export const registrarProveedor = async (peticion, respuesta) => {
       if (existentePorRuc.rows.length > 0) {
         idProveedor = existentePorRuc.rows[0].id_proveedor;
         await cliente.query(
-          `UPDATE proveedor SET representante = $1, correo = $2, id_industria = $3, tipo = COALESCE($4, tipo)
-           WHERE id_proveedor = $5`,
-          [representante || null, correo, idIndustria, tipo === 'No retail' ? 'No retail' : tipo === 'Retail' ? 'Retail' : null, idProveedor]
+          `UPDATE proveedor SET
+             razon_social = COALESCE($1, razon_social),
+             representante = $2,
+             correo = $3,
+             id_industria = $4,
+             tipo = COALESCE($5, tipo),
+             nombre_comercial = $6,
+             direccion_fiscal = $7,
+             departamento = $8,
+             cargo_representante = $9,
+             telefono = $10,
+             tamano_empresa = $11,
+             anios_operacion = $12,
+             sitio_web = $13
+           WHERE id_proveedor = $14`,
+          [
+            razonSocial,
+            representante || null,
+            correo,
+            idIndustria,
+            tipo === 'No retail' ? 'No retail' : tipo === 'Retail' ? 'Retail' : null,
+            nombreComercial || null,
+            direccionFiscal || null,
+            departamento || null,
+            cargoRepresentante || null,
+            telefono || null,
+            tamanoEmpresa || null,
+            aniosOperacion || null,
+            sitioWeb || null,
+            idProveedor
+          ]
         );
       } else {
         let idUnidadFinal = idUnidad;
@@ -122,9 +170,30 @@ export const registrarProveedor = async (peticion, respuesta) => {
           throw Object.assign(new Error('Falta la unidad de negocio de origen del enlace.'), { codigoHttp: 400 });
         }
         const nuevo = await cliente.query(
-          `INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_unidad, id_industria)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_proveedor`,
-          [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idUnidadFinal, idIndustria]
+          `INSERT INTO proveedor (
+             ruc, razon_social, representante, correo, tipo, id_unidad, id_industria,
+             nombre_comercial, direccion_fiscal, departamento, cargo_representante,
+             telefono, tamano_empresa, anios_operacion, sitio_web
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+           RETURNING id_proveedor`,
+          [
+            ruc,
+            razonSocial,
+            representante || null,
+            correo,
+            tipo === 'No retail' ? 'No retail' : 'Retail',
+            idUnidadFinal,
+            idIndustria,
+            nombreComercial || null,
+            direccionFiscal || null,
+            departamento || null,
+            cargoRepresentante || null,
+            telefono || null,
+            tamanoEmpresa || null,
+            aniosOperacion || null,
+            sitioWeb || null
+          ]
         );
         idProveedor = nuevo.rows[0].id_proveedor;
       }
