@@ -7,33 +7,40 @@ export const exportarProveedoresAExcel = (proveedores) => {
     'Unidad de Negocio',
     'Industria',
     'Crítico',
-    'Estado',
+    'Estado de Evaluación',
     'Puntaje General',
     'Ambiental',
     'Social',
     'Ética y Gobernanza',
     'Laboral',
-    'Fecha Evaluación'
+    'Cadena de Suministro',
+    'Fecha de Evaluación'
   ];
 
-  const filas = proveedores.map((prov) => [
-    `"${prov.ruc}"`,
-    `"${prov.razonSocial}"`,
-    `"${prov.representante}"`,
-    `"${prov.correo}"`,
-    `"${prov.unidad}"`,
-    `"${prov.industria}"`,
-    prov.esCritico ? '"SÍ"' : '"NO"',
-    `"${prov.estado}"`,
-    prov.puntajeTotal !== null ? prov.puntajeTotal : '""',
-    prov.dimensiones ? prov.dimensiones.ambiental : '""',
-    prov.dimensiones ? prov.dimensiones.social : '""',
-    prov.dimensiones ? prov.dimensiones.etica : '""',
-    prov.dimensiones ? prov.dimensiones.laboral : '""',
-    `"${prov.fechaEvaluacion || '-'}"`
-  ]);
+  const celda = (valor) => (valor === null || valor === undefined ? '""' : `"${valor}"`);
 
-  const contenidoCsv = '\uFEFF' + [
+  const filas = proveedores.map((prov) => {
+    const dim = prov.dimensiones || {};
+    return [
+      celda(prov.ruc),
+      celda(prov.razonSocial),
+      celda(prov.representante),
+      celda(prov.correo),
+      celda(prov.unidad),
+      celda(prov.industria),
+      prov.esCritico ? '"SÍ"' : '"NO"',
+      celda(prov.estadoEvaluacion || 'Sin evaluación'),
+      prov.puntajeTotal !== null && prov.puntajeTotal !== undefined ? Number(prov.puntajeTotal) : '""',
+      dim.AMB ?? '""',
+      dim.SOC ?? '""',
+      dim.ETI ?? '""',
+      dim.LAB ?? '""',
+      dim.CAD ?? '""',
+      celda(prov.fechaEvaluacion ? new Date(prov.fechaEvaluacion).toLocaleDateString('es-PE') : '-')
+    ];
+  });
+
+  const contenidoCsv = '﻿' + [
     encabezados.join(';'),
     ...filas.map((fila) => fila.join(';'))
   ].join('\r\n');

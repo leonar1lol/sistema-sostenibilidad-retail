@@ -17,3 +17,18 @@ export const grupoConexiones = new Pool({
 export const consultarBaseDatos = (textoConsulta, parametros) => {
   return grupoConexiones.query(textoConsulta, parametros);
 };
+
+export const ejecutarTransaccion = async (funcionTransaccion) => {
+  const cliente = await grupoConexiones.connect();
+  try {
+    await cliente.query('BEGIN');
+    const resultado = await funcionTransaccion(cliente);
+    await cliente.query('COMMIT');
+    return resultado;
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    throw error;
+  } finally {
+    cliente.release();
+  }
+};

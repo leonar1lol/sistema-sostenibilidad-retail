@@ -13,29 +13,35 @@ import {
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 
+const ICONOS_POR_CODIGO_DIMENSION = {
+  AMB: { icono: Leaf, color: 'text-emerald-600', barra: 'bg-emerald-500' },
+  SOC: { icono: Users, color: 'text-blue-600', barra: 'bg-blue-500' },
+  ETI: { icono: Shield, color: 'text-indigo-600', barra: 'bg-indigo-500' },
+  LAB: { icono: Briefcase, color: 'text-amber-600', barra: 'bg-amber-500' },
+  CAD: { icono: TrendingUp, color: 'text-purple-600', barra: 'bg-purple-500' }
+};
+
+const CLASE_POR_NIVEL = {
+  Avanzado: 'insignia-exito',
+  Intermedio: 'insignia-info',
+  Inicial: 'insignia-advertencia'
+};
+
 export default function ResultadoBento({ resultado, datosProveedor, alReiniciar, volverAlInicio }) {
-  const puntajeGlobal = resultado?.puntajeTotal ?? 72;
-  const dimensiones = resultado?.dimensiones ?? [
-    { dimension: 'Ambiental', puntaje: 65, icono: Leaf, color: 'text-emerald-600', barra: 'bg-emerald-500' },
-    { dimension: 'Social', puntaje: 78, icono: Users, color: 'text-blue-600', barra: 'bg-blue-500' },
-    { dimension: 'Ética y Gobernanza', puntaje: 81, icono: Shield, color: 'text-indigo-600', barra: 'bg-indigo-500' },
-    { dimension: 'Laboral', puntaje: 60, icono: Briefcase, color: 'text-amber-600', barra: 'bg-amber-500' }
-  ];
+  const puntajeGlobal = resultado?.puntajeTotal ?? 0;
+  const dimensiones = (resultado?.dimensiones ?? []).map((d) => ({
+    dimension: d.nombre,
+    puntaje: d.puntaje,
+    ...(ICONOS_POR_CODIGO_DIMENSION[d.codigo] || { icono: TrendingUp, color: 'text-plataformaAzul', barra: 'bg-plataformaAzul' })
+  }));
 
-  const recomendaciones = resultado?.recomendaciones ?? [
-    'Formalizar el procedimiento del canal de denuncias y difundirlo ampliamente entre los colaboradores.',
-    'Iniciar la medición anual de la huella de carbono de la operación (Alcance 1 y 2).',
-    'Documentar la política de gestión integral de residuos sólidos con registro de disposición.',
-    'Implementar un plan anual de formación y capacitación en seguridad y salud ocupacional.'
-  ];
+  const recomendaciones = resultado?.recomendaciones ?? [];
 
-  const determinarNivel = (puntaje) => {
-    if (puntaje >= 80) return { etiqueta: 'Nivel Avanzado', clase: 'insignia-exito' };
-    if (puntaje >= 60) return { etiqueta: 'Nivel Intermedio', clase: 'insignia-info' };
-    return { etiqueta: 'En Desarrollo', clase: 'insignia-advertencia' };
+  const nivelDesempeno = {
+    etiqueta: `Nivel ${resultado?.nivel || 'Inicial'}`,
+    clase: CLASE_POR_NIVEL[resultado?.nivel] || 'insignia-advertencia'
   };
 
-  const nivelDesempeno = determinarNivel(puntajeGlobal);
   const manejarReinicio = alReiniciar || volverAlInicio;
 
   return (
@@ -155,21 +161,27 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
           </div>
         </div>
 
-        <div className="divide-y divide-black/[0.05]">
-          {recomendaciones.map((texto, indice) => (
-            <div
-              key={indice}
-              className="py-3.5 flex items-start gap-3.5 first:pt-0 last:pb-0"
-            >
-              <span className="w-5 h-5 rounded-full bg-plataformaAzul/[0.08] text-plataformaAzul text-subtexto font-semibold flex items-center justify-center shrink-0 mt-0.5">
-                {indice + 1}
-              </span>
-              <p className="text-cuerpo-pequeno text-plataformaTexto leading-relaxed">
-                {typeof texto === 'string' ? texto : texto.texto}
-              </p>
-            </div>
-          ))}
-        </div>
+        {recomendaciones.length === 0 ? (
+          <p className="text-cuerpo-pequeno text-plataformaSecundario leading-relaxed">
+            No se generaron recomendaciones: su puntaje superó los umbrales definidos en todas las dimensiones evaluadas.
+          </p>
+        ) : (
+          <div className="divide-y divide-black/[0.05]">
+            {recomendaciones.map((texto, indice) => (
+              <div
+                key={indice}
+                className="py-3.5 flex items-start gap-3.5 first:pt-0 last:pb-0"
+              >
+                <span className="w-5 h-5 rounded-full bg-plataformaAzul/[0.08] text-plataformaAzul text-subtexto font-semibold flex items-center justify-center shrink-0 mt-0.5">
+                  {indice + 1}
+                </span>
+                <p className="text-cuerpo-pequeno text-plataformaTexto leading-relaxed">
+                  {typeof texto === 'string' ? texto : texto.texto}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </TarjetaBento>
     </div>
   );

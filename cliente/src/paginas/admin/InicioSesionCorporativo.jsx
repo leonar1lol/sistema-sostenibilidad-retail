@@ -1,35 +1,26 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, Building2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { iniciarSesionApi } from '../../servicios/servicioApi.js';
 
 export default function InicioSesionCorporativo({ alIniciarSesion }) {
-  const [correo, setCorreo] = useState('sostenibilidad@intercorpretail.pe');
-  const [clave, setClave] = useState('••••••••••••');
+  const [correo, setCorreo] = useState('admin@intercorpretail.pe');
+  const [clave, setClave] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState('');
-  const [mensajeRecuperacion, setMensajeRecuperacion] = useState('');
 
-  const manejarEnvio = (evento) => {
+  const manejarEnvio = async (evento) => {
     evento.preventDefault();
-    if (!correo.endsWith('@intercorpretail.pe') && !correo.includes('@')) {
-      setMensajeError('Debe ingresar un correo corporativo válido (@intercorpretail.pe).');
-      return;
-    }
-
+    setMensajeError('');
     setCargando(true);
-    setTimeout(() => {
+    try {
+      const { token, usuario } = await iniciarSesionApi(correo, clave);
+      localStorage.setItem('tokenSesionCorporativa', token);
+      alIniciarSesion({ ...usuario, token });
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
       setCargando(false);
-      alIniciarSesion({
-        nombre: 'Leonardo Solano',
-        rol: 'Administrador Corporativo',
-        correo,
-        unidad: 'Corporativo Central'
-      });
-    }, 400);
-  };
-
-  const recuperarClave = () => {
-    setMensajeRecuperacion('Instrucciones de restablecimiento enviadas a su buzón corporativo.');
-    setTimeout(() => setMensajeRecuperacion(''), 3500);
+    }
   };
 
   return (
@@ -46,13 +37,6 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
             Acceso restringido para personal del Corporativo y de las unidades de negocio de Intercorp Retail.
           </p>
         </div>
-
-        {mensajeRecuperacion && (
-          <div className="mb-5 rounded-md-token bg-emerald-50 border border-emerald-200/60 p-3 flex items-center gap-2.5 text-xs text-emerald-800">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-            <span>{mensajeRecuperacion}</span>
-          </div>
-        )}
 
         <form onSubmit={manejarEnvio} className="space-y-5">
           <div>
@@ -103,14 +87,6 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
             >
               <span>{cargando ? 'Ingresando...' : 'Ingresar'}</span>
               <ArrowRight className="w-4 h-4 stroke-[2]" />
-            </button>
-
-            <button
-              type="button"
-              onClick={recuperarClave}
-              className="boton-fantasma w-full"
-            >
-              Recuperar contraseña
             </button>
           </div>
         </form>

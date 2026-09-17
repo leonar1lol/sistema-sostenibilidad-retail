@@ -7,6 +7,7 @@ import CuestionarioDinamico from './paginas/portal/CuestionarioDinamico.jsx';
 import ResultadoBento from './paginas/portal/ResultadoBento.jsx';
 import DashboardCorporativo from './paginas/admin/DashboardCorporativo.jsx';
 import InicioSesionCorporativo from './paginas/admin/InicioSesionCorporativo.jsx';
+import { obtenerResultadoPortalApi } from './servicios/servicioApi.js';
 
 const transicionPagina = {
   initial: { opacity: 0, y: 8 },
@@ -15,80 +16,68 @@ const transicionPagina = {
   transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }
 };
 
-export default function AplicacionPrincipal() {
-  const [entornoActual, setEntornoActual] = useState('proveedor');
-  const [pasoPortal, setPasoPortal] = useState('acceso_otp');
-  const [sesionCorporativa, setSesionCorporativa] = useState(null);
+const leerContextoEnlaceDesdeUrl = () => {
+  const parametros = new URLSearchParams(window.location.search);
+  return {
+    idCampania: parametros.get('campania'),
+    idUnidad: parametros.get('unidad'),
+    tokenPersonal: parametros.get('token')
+  };
+};
 
-  const [datosProveedor, setDatosProveedor] = useState({
-    correo: 'contacto@proveedor.com.pe',
-    ruc: '20512345678',
-    razonSocial: 'Distribuidora Alimentos del Norte S.A.C.',
-    representante: 'Carlos Mendoza Alva',
-    idIndustria: '1',
-    idUnidad: '1'
+const esRutaCorporativa = () => window.location.pathname.startsWith('/admin');
+
+export default function AplicacionPrincipal() {
+  const [entornoActual] = useState(esRutaCorporativa() ? 'corporativo' : 'proveedor');
+  const [pasoPortal, setPasoPortal] = useState('acceso_otp');
+  const [contextoEnlace] = useState(leerContextoEnlaceDesdeUrl);
+  const [sesionCorporativa, setSesionCorporativa] = useState(() => {
+    const sesionGuardada = localStorage.getItem('sesionCorporativa');
+    return sesionGuardada ? JSON.parse(sesionGuardada) : null;
   });
+
+  const iniciarSesionCorporativa = (sesion) => {
+    localStorage.setItem('sesionCorporativa', JSON.stringify(sesion));
+    setSesionCorporativa(sesion);
+  };
+
+  const [datosProveedor, setDatosProveedor] = useState({});
   const [resultadoEvaluacion, setResultadoEvaluacion] = useState(null);
 
-  const alCompletarAccesoOtp = ({ correo }) => {
-    setDatosProveedor((previo) => ({ ...previo, correo }));
+  const alCompletarAccesoOtp = ({ correo, proveedorExistente }) => {
+    setDatosProveedor((previo) => ({ ...previo, correo, ...proveedorExistente }));
     setPasoPortal('registro');
   };
 
-  const alCompletarRegistro = (datosNuevos) => {
+  const alCompletarRegistro = async (datosNuevos) => {
     setDatosProveedor((previo) => ({ ...previo, ...datosNuevos }));
-    setPasoPortal('cuestionario');
+    if (datosNuevos.evaluacionFinalizada) {
+      try {
+        const resultado = await obtenerResultadoPortalApi();
+        setResultadoEvaluacion(resultado);
+      } catch {
+      }
+      setPasoPortal('resultado');
+    } else {
+      setPasoPortal('cuestionario');
+    }
   };
 
-  const alFinalizarCuestionario = (respuestas) => {
-    const mapaDimensiones = {
-      'Ambiental': { acumulado: 0, conteo: 0, color: 'text-emerald-600', barra: 'bg-emerald-500' },
-      'Social': { acumulado: 0, conteo: 0, color: 'text-blue-600', barra: 'bg-blue-500' },
-      'Ética y Gobernanza': { acumulado: 0, conteo: 0, color: 'text-indigo-600', barra: 'bg-indigo-500' },
-      'Laboral': { acumulado: 0, conteo: 0, color: 'text-amber-600', barra: 'bg-amber-500' }
-    };
-
-    respuestas.forEach((resp) => {
-      if (mapaDimensiones[resp.dimension]) {
-        mapaDimensiones[resp.dimension].acumulado += resp.puntaje;
-        mapaDimensiones[resp.dimension].conteo += 1;
-      }
-    });
-
-    const dimensionesCalculadas = Object.entries(mapaDimensiones).map(([nombre, info]) => {
-      const puntaje = info.conteo > 0 ? Math.round(info.acumulado / info.conteo) : 75;
-      return {
-        dimension: nombre,
-        puntaje,
-        color: info.color,
-        barra: info.barra
-      };
-    });
-
-    const sumaTotal = dimensionesCalculadas.reduce((acc, dim) => acc + dim.puntaje, 0);
-    const puntajeTotal = Math.round(sumaTotal / dimensionesCalculadas.length);
-
-    const recomendaciones = [
-      'Formalizar el procedimiento del canal de denuncias y difundirlo ampliamente entre los colaboradores.',
-      'Iniciar la medición anual auditada de la huella de carbono operacional con certificación de alcance.',
-      'Implementar un plan anual formal de capacitación preventiva en seguridad y salud ocupacional.'
-    ];
-
-    setResultadoEvaluacion({
-      puntajeTotal,
-      dimensiones: dimensionesCalculadas,
-      recomendaciones
-    });
-
+  const alFinalizarCuestionario = (resultado) => {
+    setResultadoEvaluacion(resultado);
     setPasoPortal('resultado');
   };
 
   const reiniciarFlujoProveedor = () => {
-    setPasoPortal('acceso_otp');
+    localStorage.removeItem('tokenSesionProveedor');
+    setDatosProveedor({});
     setResultadoEvaluacion(null);
+    setPasoPortal('acceso_otp');
   };
 
   const cerrarSesionCorporativa = () => {
+    localStorage.removeItem('sesionCorporativa');
+    localStorage.removeItem('tokenSesionCorporativa');
     setSesionCorporativa(null);
   };
 
@@ -96,7 +85,6 @@ export default function AplicacionPrincipal() {
     <div className="min-h-screen bg-plataformaFondo flex flex-col font-sans">
       <CabeceraNavegacion
         entornoActual={entornoActual}
-        alCambiarEntorno={setEntornoActual}
         sesionCorporativa={sesionCorporativa}
         alCerrarSesionCorporativa={cerrarSesionCorporativa}
       />
@@ -111,7 +99,7 @@ export default function AplicacionPrincipal() {
               {sesionCorporativa ? (
                 <DashboardCorporativo />
               ) : (
-                <InicioSesionCorporativo alIniciarSesion={setSesionCorporativa} />
+                <InicioSesionCorporativo alIniciarSesion={iniciarSesionCorporativa} />
               )}
             </motion.div>
           ) : (
@@ -124,7 +112,8 @@ export default function AplicacionPrincipal() {
               )}
               {pasoPortal === 'registro' && (
                 <RegistroProveedor
-                  correoInicial={datosProveedor.correo}
+                  proveedorExistente={datosProveedor}
+                  contextoEnlace={contextoEnlace}
                   alCompletarRegistro={alCompletarRegistro}
                 />
               )}

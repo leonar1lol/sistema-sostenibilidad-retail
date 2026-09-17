@@ -36,7 +36,7 @@
   }
 }
 
-@layer utilities {
+@layer components {
   .superficie-cristal {
     background-color: #FFFFFF;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
@@ -266,6 +266,12 @@
   .insignia-peligro {
     background-color: rgba(255, 59, 48, 0.08);
     color: #FF3B30;
+  }
+
+  .insignia-dim {
+    background-color: #EAF6FC;
+    border: 1px solid #BDE4F5;
+    color: #0670A0;
   }
 
   .toast-notificacion {

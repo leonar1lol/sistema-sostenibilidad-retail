@@ -1,51 +1,73 @@
-export const calcularPuntajeEvaluacion = (respuestas, itemsConDimension) => {
-  const acumuladoPorDimension = {
-    'Ambiental': { sumaPuntajes: 0, cantidad: 0, peso: 25 },
-    'Social': { sumaPuntajes: 0, cantidad: 0, peso: 25 },
-    'Ética y Gobernanza': { sumaPuntajes: 0, cantidad: 0, peso: 25 },
-    'Laboral': { sumaPuntajes: 0, cantidad: 0, peso: 25 }
-  };
+export const calcularVisibilidad = (items, reglas, respuestasPorItem) => {
+  const resultado = {};
 
-  for (const respuesta of respuestas) {
-    const itemEncontrado = itemsConDimension.find(
-      (item) => item.id_item === respuesta.id_item
-    );
-    if (itemEncontrado && acumuladoPorDimension[itemEncontrado.nombre_dimension]) {
-      acumuladoPorDimension[itemEncontrado.nombre_dimension].sumaPuntajes += Number(respuesta.puntaje_obtenido);
-      acumuladoPorDimension[itemEncontrado.nombre_dimension].cantidad += 1;
+  for (const item of items) {
+    const reglasDelItem = reglas.filter((r) => r.idItemDestino === item.idItem);
+
+    if (reglasDelItem.length === 0) {
+      resultado[item.idItem] = { visible: true, deshabilitado: false };
+      continue;
     }
+
+    const tieneReglaMostrar = reglasDelItem.some((r) => r.accion === 'mostrar');
+    let visible = !tieneReglaMostrar;
+    let deshabilitado = false;
+
+    for (const regla of reglasDelItem) {
+      const idAlternativaRespondida = respuestasPorItem[regla.idItemOrigen];
+      const disparada = idAlternativaRespondida != null && idAlternativaRespondida === regla.idAlternativaDisparadora;
+
+      if (regla.accion === 'mostrar' && disparada) visible = true;
+      if (regla.accion === 'ocultar' && disparada) visible = false;
+      if (regla.accion === 'deshabilitar' && disparada) deshabilitado = true;
+    }
+
+    resultado[item.idItem] = { visible, deshabilitado };
+  }
+
+  return resultado;
+};
+
+export const calcularPuntajes = (itemsRespondidos, dimensiones) => {
+  const acumuladoPorDimension = {};
+
+  for (const item of itemsRespondidos) {
+    if (!acumuladoPorDimension[item.idDimension]) {
+      acumuladoPorDimension[item.idDimension] = { sumaPonderada: 0, sumaPesos: 0 };
+    }
+    acumuladoPorDimension[item.idDimension].sumaPonderada += item.puntajeAlternativa * item.peso;
+    acumuladoPorDimension[item.idDimension].sumaPesos += item.peso;
   }
 
   const puntajesPorDimension = [];
-  let puntajeGlobalCalculado = 0;
+  for (const dimension of dimensiones) {
+    const acumulado = acumuladoPorDimension[dimension.idDimension];
+    if (!acumulado || acumulado.sumaPesos === 0) continue; // se omite, no cuenta como 0
 
-  for (const [nombreDimension, datos] of Object.entries(acumuladoPorDimension)) {
-    const promedio = datos.cantidad > 0 ? Math.round(datos.sumaPuntajes / datos.cantidad) : 0;
     puntajesPorDimension.push({
-      dimension: nombreDimension,
-      puntaje: promedio,
-      porcentajeTexto: `${promedio}%`
+      idDimension: dimension.idDimension,
+      codigo: dimension.codigo,
+      nombre: dimension.nombre,
+      peso: Number(dimension.peso),
+      puntaje: Math.round(acumulado.sumaPonderada / acumulado.sumaPesos)
     });
-    puntajeGlobalCalculado += promedio * (datos.peso / 100);
   }
 
+  if (puntajesPorDimension.length === 0) {
+    return { puntajeTotal: null, dimensiones: [] };
+  }
+
+  const sumaPonderadaGeneral = puntajesPorDimension.reduce((acc, d) => acc + d.puntaje * d.peso, 0);
+  const sumaPesosGeneral = puntajesPorDimension.reduce((acc, d) => acc + d.peso, 0);
+
   return {
-    puntajeTotal: Math.round(puntajeGlobalCalculado),
+    puntajeTotal: Math.round(sumaPonderadaGeneral / sumaPesosGeneral),
     dimensiones: puntajesPorDimension
   };
 };
 
-export const determinarRecomendaciones = (puntajesPorDimension, catalogoRecomendaciones) => {
-  const recomendacionesFiltradas = [];
-
-  for (const dimensionPuntaje of puntajesPorDimension) {
-    const recomendacionesAplicables = catalogoRecomendaciones.filter(
-      (recomendacion) =>
-        recomendacion.nombre_dimension === dimensionPuntaje.dimension &&
-        dimensionPuntaje.puntaje < Number(recomendacion.umbral)
-    );
-    recomendacionesFiltradas.push(...recomendacionesAplicables);
-  }
-
-  return recomendacionesFiltradas;
+export const determinarNivelDesempeno = (puntaje) => {
+  if (puntaje >= 75) return 'Avanzado';
+  if (puntaje >= 60) return 'Intermedio';
+  return 'Inicial';
 };

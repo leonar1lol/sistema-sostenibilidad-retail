@@ -1,88 +1,161 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Users,
   Shield,
   UserPlus,
   CheckCircle2,
-  Lock,
   Mail,
-  Building,
   X,
-  ToggleLeft,
-  ToggleRight
+  AlertCircle,
+  Pencil
 } from 'lucide-react';
-import { listaUsuariosCorporativos } from '../../datos/datosIniciales.js';
+import {
+  listarUsuariosApi,
+  crearUsuarioApi,
+  cambiarEstadoUsuarioApi,
+  editarUsuarioApi,
+  listarRolesYPermisosApi,
+  actualizarPermisoDeRolApi,
+  listarUnidadesApi
+} from '../../servicios/servicioApi.js';
 
 export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
   const [vistaInterna, setVistaInterna] = useState('usuarios');
-  const [usuarios, setUsuarios] = useState(listaUsuariosCorporativos);
+  const [usuarios, setUsuarios] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [permisos, setPermisos] = useState([]);
+  const [matriz, setMatriz] = useState([]);
+  const [unidades, setUnidades] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
+  const [mensajeError, setMensajeError] = useState('');
 
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoCorreo, setNuevoCorreo] = useState('');
-  const [nuevoRol, setNuevoRol] = useState('Gestor Unidad Negocio');
-  const [nuevaUnidad, setNuevaUnidad] = useState('Supermercados Peruanos');
+  const [nuevaClave, setNuevaClave] = useState('');
+  const [nuevoIdRol, setNuevoIdRol] = useState('');
+  const [nuevoIdUnidad, setNuevoIdUnidad] = useState('');
 
-  const matrizPermisos = [
-    { funcion: 'Acceso y visualización de dashboards ejecutivos', admin: true, gestor: true, auditor: true },
-    { funcion: 'Marcado y edición de lista de proveedores críticos', admin: true, gestor: true, auditor: false },
-    { funcion: 'Exportación de reportes a Excel / CSV', admin: true, gestor: true, auditor: true },
-    { funcion: 'Creación y ponderación en el Banco de Preguntas', admin: true, gestor: false, auditor: false },
-    { funcion: 'Gestión de usuarios y asignación de roles', admin: true, gestor: false, auditor: false },
-    { funcion: 'Configuración de unidades de negocio e industrias', admin: true, gestor: false, auditor: false },
-    { funcion: 'Consulta de bitácora de auditoría del sistema', admin: true, gestor: false, auditor: true }
-  ];
+  const [usuarioEditando, setUsuarioEditando] = useState(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editIdRol, setEditIdRol] = useState('');
+  const [editIdUnidad, setEditIdUnidad] = useState('');
 
-  const alternarEstadoUsuario = (id) => {
-    const actualizados = usuarios.map((u) => {
-      if (u.id === id) {
-        const nuevoEstado = u.estado === 'Activo' ? 'Inactivo' : 'Activo';
-        if (alRegistrarAuditoria) {
-          alRegistrarAuditoria({
-            accion: 'Modificación de estado de usuario',
-            modulo: 'Seguridad y Roles',
-            detalles: `Usuario ${u.nombre} cambió su estado a ${nuevoEstado}`
-          });
-        }
-        return { ...u, estado: nuevoEstado };
-      }
-      return u;
-    });
-    setUsuarios(actualizados);
-    mostrarAviso('Estado de acceso de usuario modificado.');
-  };
+  const cargarDatos = useCallback(async () => {
+    setCargando(true);
+    try {
+      const [usuariosRemotos, rolesPermisos, unidadesRemotas] = await Promise.all([
+        listarUsuariosApi(),
+        listarRolesYPermisosApi(),
+        listarUnidadesApi()
+      ]);
+      setUsuarios(usuariosRemotos);
+      setRoles(rolesPermisos.roles);
+      setPermisos(rolesPermisos.permisos);
+      setMatriz(rolesPermisos.matriz);
+      setUnidades(unidadesRemotas);
+      setNuevoIdRol((actual) => actual || String(rolesPermisos.roles[0]?.idRol ?? ''));
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const tienePermiso = (idRol, idPermiso) =>
+    matriz.some((m) => m.idRol === idRol && m.idPermiso === idPermiso);
 
   const mostrarAviso = (texto) => {
     setMensajeExito(texto);
     setTimeout(() => setMensajeExito(''), 3000);
   };
 
-  const agregarUsuario = (e) => {
-    e.preventDefault();
-    const nuevo = {
-      id: Date.now(),
-      nombre: nuevoNombre,
-      correo: nuevoCorreo,
-      rol: nuevoRol,
-      unidad: nuevaUnidad,
-      estado: 'Activo',
-      ultimoAcceso: 'Pendiente de primer ingreso'
-    };
-
-    setUsuarios([...usuarios, nuevo]);
-    setMostrarModalNuevo(false);
-    if (alRegistrarAuditoria) {
-      alRegistrarAuditoria({
-        accion: 'Creación de nuevo usuario interno',
-        modulo: 'Seguridad y Roles',
-        detalles: `Se asignó el rol de ${nuevoRol} a ${nuevoNombre} (${nuevoCorreo})`
-      });
+  const alternarEstadoUsuario = async (usuario) => {
+    try {
+      await cambiarEstadoUsuarioApi(usuario.idUsuario, !usuario.estado);
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({
+          accion: 'Modificación de estado de usuario',
+          modulo: 'Seguridad y Roles',
+          detalles: `Usuario ${usuario.nombre} cambió su estado a ${!usuario.estado ? 'Activo' : 'Inactivo'}`
+        });
+      }
+      mostrarAviso('Estado de acceso de usuario modificado.');
+    } catch (error) {
+      setMensajeError(error.message);
     }
+  };
 
-    setNuevoNombre('');
-    setNuevoCorreo('');
-    mostrarAviso('Usuario incorporado exitosamente.');
+  const alternarPermisoDeRol = async (idRol, idPermiso, asignadoActual) => {
+    try {
+      await actualizarPermisoDeRolApi(idRol, idPermiso, !asignadoActual);
+      await cargarDatos();
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const abrirEdicion = (usuario) => {
+    setUsuarioEditando(usuario);
+    setEditNombre(usuario.nombre);
+    setEditIdRol(String(usuario.idRol));
+    setEditIdUnidad(usuario.idUnidad ? String(usuario.idUnidad) : '');
+  };
+
+  const guardarEdicionUsuario = async (e) => {
+    e.preventDefault();
+    try {
+      await editarUsuarioApi(usuarioEditando.idUsuario, {
+        nombre: editNombre,
+        idRol: Number(editIdRol),
+        idUnidad: editIdUnidad ? Number(editIdUnidad) : null
+      });
+      setUsuarioEditando(null);
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({
+          accion: 'Edición de usuario interno',
+          modulo: 'Seguridad y Roles',
+          detalles: `Se actualizaron los datos de ${editNombre}`
+        });
+      }
+      mostrarAviso('Usuario actualizado exitosamente.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const agregarUsuario = async (e) => {
+    e.preventDefault();
+    try {
+      await crearUsuarioApi({
+        nombre: nuevoNombre,
+        correo: nuevoCorreo,
+        clave: nuevaClave,
+        idRol: Number(nuevoIdRol),
+        idUnidad: nuevoIdUnidad ? Number(nuevoIdUnidad) : null
+      });
+      setMostrarModalNuevo(false);
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({
+          accion: 'Creación de nuevo usuario interno',
+          modulo: 'Seguridad y Roles',
+          detalles: `Se registró a ${nuevoNombre} (${nuevoCorreo})`
+        });
+      }
+      setNuevoNombre('');
+      setNuevoCorreo('');
+      setNuevaClave('');
+      mostrarAviso('Usuario incorporado exitosamente.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
   };
 
   return (
@@ -94,10 +167,17 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
         </div>
       )}
 
+      {mensajeError && (
+        <div className="rounded-md-token bg-red-50 border border-red-200/60 p-3 flex items-center gap-2.5 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{mensajeError}</span>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Módulo de Seguridad y Accesos (RF02)
+            Módulo de Seguridad y Accesos (RF02, RF03)
           </span>
           <h2 className="text-titulo-seccion">
             Gestión de Usuarios, Roles y Permisos
@@ -143,7 +223,11 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
         )}
       </div>
 
-      {vistaInterna === 'usuarios' ? (
+      {cargando ? (
+        <div className="superficie-tarjeta rounded-lg-token p-10 text-center text-cuerpo-pequeno text-plataformaSecundario">
+          Cargando datos reales desde el servidor…
+        </div>
+      ) : vistaInterna === 'usuarios' ? (
         <div className="superficie-tarjeta rounded-lg-token overflow-hidden">
           <div className="overflow-x-auto">
             <table className="tabla-premium w-full text-left">
@@ -154,13 +238,12 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
                   <th>Rol Asignado</th>
                   <th>Unidad de Negocio</th>
                   <th className="text-center">Estado</th>
-                  <th>Último Acceso</th>
                   <th className="text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {usuarios.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.idUsuario}>
                     <td className="py-3.5 px-4 font-medium text-plataformaTexto">
                       {u.nombre}
                     </td>
@@ -169,40 +252,42 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`inline-flex items-center gap-1 ${
-                        u.rol === 'Administrador Corporativo'
-                          ? 'insignia-info'
-                          : 'insignia-neutra'
+                        u.rol === 'Administrador Corporativo' ? 'insignia-info' : 'insignia-neutra'
                       }`}>
                         <Shield className="w-3 h-3" />
                         {u.rol}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-cuerpo-pequeno text-plataformaTexto">
-                      {u.unidad}
+                      {u.unidad || 'Corporativo'}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <span className={`inline-flex items-center gap-1 ${
-                        u.estado === 'Activo'
-                          ? 'insignia-exito'
-                          : 'insignia-peligro'
+                        u.estado ? 'insignia-exito' : 'insignia-peligro'
                       }`}>
-                        {u.estado}
+                        {u.estado ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-plataformaSecundario text-subtexto">
-                      {u.ultimoAcceso}
-                    </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => alternarEstadoUsuario(u.id)}
-                        className={`text-subtexto font-medium px-3 py-1 rounded-full transition-all cursor-pointer ${
-                          u.estado === 'Activo'
-                            ? 'bg-red-50 hover:bg-red-100 text-red-600'
-                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
-                        }`}
-                      >
-                        {u.estado === 'Activo' ? 'Desactivar' : 'Activar'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => abrirEdicion(u)}
+                          className="p-1.5 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                          title="Editar usuario"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => alternarEstadoUsuario(u)}
+                          className={`text-subtexto font-medium px-3 py-1 rounded-full transition-all cursor-pointer ${
+                            u.estado
+                              ? 'bg-red-50 hover:bg-red-100 text-red-600'
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {u.estado ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -216,46 +301,43 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
             Matriz de Privilegios Granulares por Perfil
           </h3>
           <p className="text-cuerpo-pequeno text-plataformaSecundario mb-6">
-            Definición de control de acceso basada en roles (RBAC) conforme a la directiva de seguridad corporativa.
+            Control de acceso basado en roles (RBAC). Clic en un ícono para asignar/quitar el permiso — se aplica de inmediato en el backend.
           </p>
 
           <div className="overflow-x-auto">
             <table className="tabla-premium w-full text-left">
               <thead>
                 <tr>
-                  <th>Función / Módulo del Sistema</th>
-                  <th className="text-center">Administrador Corporativo</th>
-                  <th className="text-center">Gestor Unidad de Negocio</th>
-                  <th className="text-center">Auditor de Sostenibilidad</th>
+                  <th>Permiso</th>
+                  {roles.map((rol) => (
+                    <th key={rol.idRol} className="text-center">{rol.nombre}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {matrizPermisos.map((permiso, idx) => (
-                  <tr key={idx}>
+                {permisos.map((permiso) => (
+                  <tr key={permiso.idPermiso}>
                     <td className="py-3.5 px-4 text-cuerpo-pequeno font-medium text-plataformaTexto">
-                      {permiso.funcion}
+                      {permiso.descripcion}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {permiso.admin ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />
-                      ) : (
-                        <X className="w-4 h-4 text-black/20 mx-auto" />
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {permiso.gestor ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />
-                      ) : (
-                        <X className="w-4 h-4 text-black/20 mx-auto" />
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {permiso.auditor ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />
-                      ) : (
-                        <X className="w-4 h-4 text-black/20 mx-auto" />
-                      )}
-                    </td>
+                    {roles.map((rol) => {
+                      const asignado = tienePermiso(rol.idRol, permiso.idPermiso);
+                      return (
+                        <td key={rol.idRol} className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => alternarPermisoDeRol(rol.idRol, permiso.idPermiso, asignado)}
+                            className="cursor-pointer"
+                            title={asignado ? 'Quitar permiso' : 'Asignar permiso'}
+                          >
+                            {asignado ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />
+                            ) : (
+                              <X className="w-4 h-4 text-black/20 mx-auto" />
+                            )}
+                          </button>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -300,45 +382,55 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Correo corporativo (@intercorpretail.pe)</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-plataformaSecundario absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={nuevoCorreo}
+                    onChange={(e) => setNuevoCorreo(e.target.value)}
+                    placeholder="aflores@intercorpretail.pe"
+                    className="campo-entrada campo-entrada-icono w-full font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Contraseña inicial</label>
                 <input
-                  type="email"
+                  type="password"
                   required
-                  value={nuevoCorreo}
-                  onChange={(e) => setNuevoCorreo(e.target.value)}
-                  placeholder="aflores@intercorpretail.pe"
-                  className="campo-entrada w-full font-mono"
+                  minLength={6}
+                  value={nuevaClave}
+                  onChange={(e) => setNuevaClave(e.target.value)}
+                  className="campo-entrada w-full"
                 />
               </div>
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Rol de seguridad</label>
                 <select
-                  value={nuevoRol}
-                  onChange={(e) => setNuevoRol(e.target.value)}
+                  value={nuevoIdRol}
+                  onChange={(e) => setNuevoIdRol(e.target.value)}
                   className="campo-select w-full"
                 >
-                  <option value="Administrador Corporativo">Administrador Corporativo</option>
-                  <option value="Gestor Unidad Negocio">Gestor Unidad Negocio</option>
-                  <option value="Analista Funcional">Analista Funcional</option>
-                  <option value="Auditor de Calidad">Auditor de Calidad</option>
+                  {roles.map((rol) => (
+                    <option key={rol.idRol} value={rol.idRol}>{rol.nombre}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Unidad de Negocio asignada</label>
                 <select
-                  value={nuevaUnidad}
-                  onChange={(e) => setNuevaUnidad(e.target.value)}
+                  value={nuevoIdUnidad}
+                  onChange={(e) => setNuevoIdUnidad(e.target.value)}
                   className="campo-select w-full"
                 >
-                  <option value="Corporativo Central">Corporativo Central</option>
-                  <option value="Supermercados Peruanos">Supermercados Peruanos</option>
-                  <option value="Promart">Promart</option>
-                  <option value="Oechsle">Oechsle</option>
-                  <option value="Real Plaza">Real Plaza</option>
-                  <option value="Farmacias Peruanas">Farmacias Peruanas</option>
-                  <option value="SIP">SIP</option>
-                  <option value="Intercorp Retail Sucursal China">Sucursal China</option>
+                  <option value="">Corporativo (sin unidad)</option>
+                  {unidades.map((unidad) => (
+                    <option key={unidad.idUnidad} value={unidad.idUnidad}>{unidad.nombre}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -356,6 +448,89 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
                 className="boton-primario"
               >
                 Crear usuario
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {usuarioEditando && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <form onSubmit={guardarEdicionUsuario} className="contenido-modal max-w-md w-full p-8">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-plataformaAzul block uppercase">
+                  Seguridad
+                </span>
+                <h3 className="text-titulo-seccion mt-1">
+                  Editar Usuario
+                </h3>
+                <p className="text-cuerpo-pequeno text-plataformaSecundario mt-0.5 font-mono">
+                  {usuarioEditando.correo}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUsuarioEditando(null)}
+                className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Nombre completo</label>
+                <input
+                  type="text"
+                  required
+                  value={editNombre}
+                  onChange={(e) => setEditNombre(e.target.value)}
+                  className="campo-entrada w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Rol de seguridad</label>
+                <select
+                  value={editIdRol}
+                  onChange={(e) => setEditIdRol(e.target.value)}
+                  className="campo-select w-full"
+                >
+                  {roles.map((rol) => (
+                    <option key={rol.idRol} value={rol.idRol}>{rol.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Unidad de Negocio asignada</label>
+                <select
+                  value={editIdUnidad}
+                  onChange={(e) => setEditIdUnidad(e.target.value)}
+                  className="campo-select w-full"
+                >
+                  <option value="">Corporativo (sin unidad)</option>
+                  {unidades.map((unidad) => (
+                    <option key={unidad.idUnidad} value={unidad.idUnidad}>{unidad.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setUsuarioEditando(null)}
+                className="boton-secundario"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="boton-primario"
+              >
+                Guardar cambios
               </button>
             </div>
           </form>

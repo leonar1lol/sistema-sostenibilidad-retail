@@ -1,33 +1,53 @@
-import React, { useState } from 'react';
-import { Building2, User, FileText, ChevronRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, User, FileText, ChevronRight, AlertCircle } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
+import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi } from '../../servicios/servicioApi.js';
 
-export default function RegistroProveedor({ correoInicial, alCompletarRegistro, alCompletar }) {
-  const [ruc, setRuc] = useState('20512345678');
-  const [razonSocial, setRazonSocial] = useState('Distribuidora Alimentos del Norte S.A.C.');
-  const [representante, setRepresentante] = useState('Carlos Mendoza Alva');
-  const [idIndustria, setIdIndustria] = useState('1');
-  const [idUnidad, setIdUnidad] = useState('1');
+export default function RegistroProveedor({ proveedorExistente, contextoEnlace, alCompletarRegistro }) {
+  const [ruc, setRuc] = useState(proveedorExistente?.ruc || '');
+  const [razonSocial, setRazonSocial] = useState(proveedorExistente?.razonSocial || '');
+  const [representante, setRepresentante] = useState(proveedorExistente?.representante || '');
+  const [idIndustria, setIdIndustria] = useState(proveedorExistente?.idIndustria ? String(proveedorExistente.idIndustria) : '');
+  const [tipo, setTipo] = useState(proveedorExistente?.tipo || 'Retail');
+  const [industrias, setIndustrias] = useState([]);
   const [aceptaDatosPersonales, setAceptaDatosPersonales] = useState(true);
   const [errorConsentimiento, setErrorConsentimiento] = useState('');
+  const [mensajeError, setMensajeError] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const manejarEnvio = (evento) => {
+  useEffect(() => {
+    obtenerDatosMaestrosPortalApi()
+      .then((datos) => {
+        setIndustrias(datos.industrias);
+        setIdIndustria((actual) => actual || String(datos.industrias[0]?.id_industria ?? ''));
+      })
+      .catch((error) => setMensajeError(error.message));
+  }, []);
+
+  const manejarEnvio = async (evento) => {
     evento.preventDefault();
     if (!aceptaDatosPersonales) {
       setErrorConsentimiento('Debe autorizar el tratamiento de datos personales para continuar.');
       return;
     }
 
-    const funcionCompletar = alCompletarRegistro || alCompletar;
-    if (funcionCompletar) {
-      funcionCompletar({
+    setEnviando(true);
+    setMensajeError('');
+    try {
+      const datos = await registrarProveedorPortalApi({
         ruc,
         razonSocial,
         representante,
-        correo: correoInicial || 'contacto@proveedor.com.pe',
-        idIndustria,
-        idUnidad
+        idIndustria: Number(idIndustria),
+        tipo,
+        idCampania: contextoEnlace?.idCampania ? Number(contextoEnlace.idCampania) : undefined,
+        idUnidad: contextoEnlace?.idUnidad ? Number(contextoEnlace.idUnidad) : undefined
       });
+      alCompletarRegistro({ ruc, razonSocial, representante, idIndustria, evaluacionFinalizada: datos.evaluacionFinalizada });
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -65,20 +85,11 @@ export default function RegistroProveedor({ correoInicial, alCompletarRegistro, 
 
             <div>
               <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                Unidad de Negocio
+                Tipo de proveedor
               </label>
-              <select
-                value={idUnidad}
-                onChange={(e) => setIdUnidad(e.target.value)}
-                className="campo-select w-full text-xs"
-              >
-                <option value="1">Supermercados Peruanos</option>
-                <option value="2">Promart</option>
-                <option value="3">Oechsle</option>
-                <option value="4">Real Plaza</option>
-                <option value="5">Farmacias Peruanas</option>
-                <option value="6">SIP</option>
-                <option value="7">Intercorp Retail Sucursal China</option>
+              <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="campo-select w-full text-xs">
+                <option value="Retail">Retail</option>
+                <option value="No retail">No retail</option>
               </select>
             </div>
           </div>
@@ -124,11 +135,9 @@ export default function RegistroProveedor({ correoInicial, alCompletarRegistro, 
               onChange={(e) => setIdIndustria(e.target.value)}
               className="campo-select w-full text-xs"
             >
-              <option value="1">Alimentos y Bebidas Envasados</option>
-              <option value="2">Transporte, Almacén y Logística</option>
-              <option value="3">Textil, Confecciones y Calzado</option>
-              <option value="4">Servicios Generales y Mantenimiento</option>
-              <option value="5">Productos Farmacéuticos y Cuidado Personal</option>
+              {industrias.map((ind) => (
+                <option key={ind.id_industria} value={ind.id_industria}>{ind.nombre}</option>
+              ))}
             </select>
           </div>
 
@@ -155,12 +164,20 @@ export default function RegistroProveedor({ correoInicial, alCompletarRegistro, 
             )}
           </div>
 
+          {mensajeError && (
+            <div className="p-3 bg-red-50 border border-red-200/60 rounded-md-token flex items-center gap-2.5 text-cuerpo-pequeno text-red-700">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{mensajeError}</span>
+            </div>
+          )}
+
           <div className="pt-2">
             <button
               type="submit"
+              disabled={enviando}
               className="boton-primario w-full flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Confirmar y comenzar evaluación</span>
+              <span>{enviando ? 'Guardando...' : 'Confirmar y comenzar evaluación'}</span>
               <ChevronRight className="w-4 h-4 stroke-[2]" />
             </button>
           </div>

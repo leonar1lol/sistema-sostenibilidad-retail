@@ -9,6 +9,7 @@
     "vista-previa": "vite preview"
   },
   "dependencies": {
+    "@sentry/react": "^10.74.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.2.10",
     "lucide-react": "^0.395.0",

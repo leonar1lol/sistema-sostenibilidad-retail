@@ -1,101 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
-  Filter,
   ShieldAlert,
-  Send,
-  Eye,
   Plus,
   CheckCircle2,
   Clock,
-  Building2,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertCircle,
+  Paperclip,
+  Download
 } from 'lucide-react';
-import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
-import { registrarProveedorApi } from '../../servicios/servicioApi.js';
+import {
+  listarProveedoresAdminApi,
+  crearProveedorAdminApi,
+  alternarProveedorCriticoApi,
+  listarUnidadesApi,
+  listarIndustriasApi,
+  listarEvidenciaProveedorAdminApi
+} from '../../servicios/servicioApi.js';
 
-export default function GestionProveedores({ proveedores, alActualizarProveedores }) {
+function EvidenciaFicha({ idProveedor }) {
+  const [evidencias, setEvidencias] = useState(null);
+
+  useEffect(() => {
+    listarEvidenciaProveedorAdminApi(idProveedor).then(setEvidencias).catch(() => setEvidencias([]));
+  }, [idProveedor]);
+
+  if (!evidencias) {
+    return <p className="text-subtexto text-plataformaSecundario">Cargando evidencia adjuntada…</p>;
+  }
+  if (evidencias.length === 0) {
+    return <p className="text-subtexto text-plataformaSecundario">Este proveedor no adjuntó documentos de sustento.</p>;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {evidencias.map((ev) => (
+        <a
+          key={ev.idEvidencia}
+          href={ev.urlDescarga}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 text-subtexto text-plataformaTexto bg-black/[0.02] hover:bg-black/[0.04] rounded-md-token px-3 py-1.5 transition-colors"
+        >
+          <Paperclip className="w-3.5 h-3.5 text-plataformaSecundario shrink-0" />
+          <span className="truncate flex-1">{ev.codigoItem} — {ev.nombreArchivo}</span>
+          <Download className="w-3.5 h-3.5 text-plataformaSecundario shrink-0" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export default function GestionProveedores() {
+  const [proveedores, setProveedores] = useState([]);
+  const [unidades, setUnidades] = useState([]);
+  const [industrias, setIndustrias] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroUnidad, setFiltroUnidad] = useState('todas');
-  const [filtroEstado, setFiltroEstado] = useState('todos');
   const [filtroSoloCriticos, setFiltroSoloCriticos] = useState(false);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
   const [mensajeNotificacion, setMensajeNotificacion] = useState('');
+  const [mensajeError, setMensajeError] = useState('');
 
   const [nuevoRuc, setNuevoRuc] = useState('');
   const [nuevaRazon, setNuevaRazon] = useState('');
   const [nuevoRepresentante, setNuevoRepresentante] = useState('');
   const [nuevoCorreo, setNuevoCorreo] = useState('');
-  const [nuevaUnidad, setNuevaUnidad] = useState('Supermercados Peruanos');
-  const [nuevaIndustria, setNuevaIndustria] = useState('Alimentos y Bebidas Envasados');
-  const [nuevoEsCritico, setNuevoEsCritico] = useState(false);
+  const [nuevoTipo, setNuevoTipo] = useState('Retail');
+  const [nuevaIdUnidad, setNuevaIdUnidad] = useState('');
+  const [nuevaIdIndustria, setNuevaIdIndustria] = useState('');
+
+  const cargarDatos = useCallback(async () => {
+    setCargando(true);
+    try {
+      const [proveedoresRemotos, unidadesRemotas, industriasRemotas] = await Promise.all([
+        listarProveedoresAdminApi(),
+        listarUnidadesApi(),
+        listarIndustriasApi()
+      ]);
+      setProveedores(proveedoresRemotos);
+      setUnidades(unidadesRemotas);
+      setIndustrias(industriasRemotas);
+      setNuevaIdUnidad((actual) => actual || String(unidadesRemotas[0]?.idUnidad ?? ''));
+      setNuevaIdIndustria((actual) => actual || String(industriasRemotas[0]?.idIndustria ?? ''));
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const proveedoresFiltrados = proveedores.filter((item) => {
     const coincideTexto =
       item.razonSocial.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
       item.ruc.includes(terminoBusqueda);
     const coincideUnidad = filtroUnidad === 'todas' || item.unidad === filtroUnidad;
-    const coincideEstado = filtroEstado === 'todos' || item.estado === filtroEstado;
     const coincideCritico = !filtroSoloCriticos || item.esCritico;
-    return coincideTexto && coincideUnidad && coincideEstado && coincideCritico;
+    return coincideTexto && coincideUnidad && coincideCritico;
   });
-
-  const alternarCritico = (id) => {
-    const actualizados = proveedores.map((p) =>
-      p.id === id ? { ...p, esCritico: !p.esCritico } : p
-    );
-    alActualizarProveedores(actualizados);
-    mostrarAviso('Estado de criticidad actualizado.');
-  };
-
-  const enviarRecordatorio = (correo) => {
-    mostrarAviso(`Notificación y enlace OTP remitido con éxito a ${correo}`);
-  };
 
   const mostrarAviso = (texto) => {
     setMensajeNotificacion(texto);
     setTimeout(() => setMensajeNotificacion(''), 3000);
   };
 
-  const registrarNuevoProveedor = (e) => {
+  const alternarCritico = async (prov) => {
+    try {
+      await alternarProveedorCriticoApi(prov.idProveedor, !prov.esCritico);
+      await cargarDatos();
+      mostrarAviso('Estado de criticidad actualizado.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const registrarNuevoProveedor = async (e) => {
     e.preventDefault();
-    const nuevo = {
-      id: Date.now(),
-      ruc: nuevoRuc,
-      razonSocial: nuevaRazon,
-      representante: nuevoRepresentante,
-      correo: nuevoCorreo,
-      unidad: nuevaUnidad,
-      idUnidad: '1',
-      industria: nuevaIndustria,
-      idIndustria: '1',
-      esCritico: nuevoEsCritico,
-      estado: 'Pendiente',
-      puntajeTotal: null,
-      fechaEvaluacion: null,
-      dimensiones: null
-    };
-
-    registrarProveedorApi({
-      ruc: nuevoRuc,
-      razonSocial: nuevaRazon,
-      representante: nuevoRepresentante,
-      correo: nuevoCorreo,
-      esCritico: nuevoEsCritico,
-      idUnidad: 1,
-      idIndustria: 1
-    });
-
-    alActualizarProveedores([nuevo, ...proveedores]);
-    setMostrarModalNuevo(false);
-    setNuevoRuc('');
-    setNuevaRazon('');
-    setNuevoRepresentante('');
-    setNuevoCorreo('');
-    mostrarAviso('Proveedor incorporado exitosamente al padrón corporativo.');
+    try {
+      await crearProveedorAdminApi({
+        ruc: nuevoRuc,
+        razonSocial: nuevaRazon,
+        representante: nuevoRepresentante,
+        correo: nuevoCorreo,
+        tipo: nuevoTipo,
+        idUnidad: Number(nuevaIdUnidad),
+        idIndustria: nuevaIdIndustria ? Number(nuevaIdIndustria) : null
+      });
+      await cargarDatos();
+      setMostrarModalNuevo(false);
+      setNuevoRuc('');
+      setNuevaRazon('');
+      setNuevoRepresentante('');
+      setNuevoCorreo('');
+      mostrarAviso('Proveedor incorporado exitosamente al padrón corporativo.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
   };
 
   return (
@@ -107,10 +156,17 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
         </div>
       )}
 
+      {mensajeError && (
+        <div className="rounded-md-token bg-red-50 border border-red-200/60 p-3 flex items-center gap-2.5 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{mensajeError}</span>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Gestión de Padrón Corporativo
+            Gestión de Padrón Corporativo (RF06, RF07)
           </span>
           <h2 className="text-titulo-seccion">
             Directorio de Proveedores
@@ -158,28 +214,13 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
               className="campo-select w-full"
             >
               <option value="todas">Todas las unidades</option>
-              <option value="Supermercados Peruanos">Supermercados Peruanos</option>
-              <option value="Promart">Promart</option>
-              <option value="Oechsle">Oechsle</option>
-              <option value="Real Plaza">Real Plaza</option>
-              <option value="Farmacias Peruanas">Farmacias Peruanas</option>
-              <option value="SIP">SIP</option>
-              <option value="Intercorp Retail Sucursal China">Sucursal China</option>
+              {unidades.map((u) => (
+                <option key={u.idUnidad} value={u.nombre}>{u.nombre}</option>
+              ))}
             </select>
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              className="campo-select flex-1"
-            >
-              <option value="todos">Todos los estados</option>
-              <option value="Evaluado">Evaluado</option>
-              <option value="En Progreso">En Progreso</option>
-              <option value="Pendiente">Pendiente</option>
-            </select>
-
             <button
               onClick={() => setFiltroSoloCriticos(!filtroSoloCriticos)}
               className={`flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -207,13 +248,18 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                 <th className="text-center">Crítico</th>
                 <th className="text-center">Estado</th>
                 <th className="text-center">Puntaje</th>
-                <th className="text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {proveedoresFiltrados.length === 0 ? (
+              {cargando ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={7} className="py-12 text-center text-plataformaSecundario">
+                    Cargando datos reales desde el servidor…
+                  </td>
+                </tr>
+              ) : proveedoresFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
                     <div className="estado-vacio py-12 text-center text-plataformaSecundario flex flex-col items-center">
                       <Search className="w-8 h-8 mb-3 opacity-50" />
                       <span>No se encontraron proveedores que coincidan con los criterios de búsqueda.</span>
@@ -222,10 +268,10 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                 </tr>
               ) : (
                 proveedoresFiltrados.map((prov) => (
-                  <tr key={prov.id}>
+                  <tr key={prov.idProveedor} onClick={() => setProveedorSeleccionado(prov)} className="cursor-pointer">
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-plataformaTexto">{prov.razonSocial}</div>
-                      <div className="text-subtexto text-plataformaSecundario">{prov.representante}</div>
+                      <div className="text-subtexto text-plataformaSecundario">{prov.representante || 'Sin representante registrado'}</div>
                     </td>
                     <td className="py-3.5 px-4 font-mono text-cuerpo-pequeno text-plataformaSecundario">
                       {prov.ruc}
@@ -238,7 +284,7 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <button
-                        onClick={() => alternarCritico(prov.id)}
+                        onClick={(e) => { e.stopPropagation(); alternarCritico(prov); }}
                         className={`p-1.5 rounded-full transition-all cursor-pointer ${
                           prov.esCritico
                             ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
@@ -249,54 +295,24 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                       </button>
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 ${
-                          prov.estado === 'Evaluado'
-                            ? 'insignia-exito'
-                            : prov.estado === 'En Progreso'
-                            ? 'insignia-info'
-                            : 'insignia-neutra'
-                        }`}
-                      >
-                        {prov.estado === 'Evaluado' && <CheckCircle2 className="w-3 h-3" />}
-                        {prov.estado === 'Pendiente' && <Clock className="w-3 h-3" />}
-                        {prov.estado}
-                      </span>
+                      {prov.estadoEvaluacion === 'Finalizado' ? (
+                        <span className="inline-flex items-center gap-1 insignia-exito">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Finalizado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 insignia-neutra">
+                          <Clock className="w-3 h-3" />
+                          {prov.estadoEvaluacion || 'Sin evaluación'}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-center font-mono font-semibold">
-                      {prov.puntajeTotal !== null ? (
-                        <span
-                          className={
-                            prov.puntajeTotal >= 80
-                              ? 'text-emerald-600'
-                              : prov.puntajeTotal >= 60
-                              ? 'text-plataformaAzul'
-                              : 'text-amber-600'
-                          }
-                        >
-                          {prov.puntajeTotal}/100
-                        </span>
+                      {prov.puntajeTotal !== null && prov.puntajeTotal !== undefined ? (
+                        Math.round(Number(prov.puntajeTotal))
                       ) : (
                         <span className="text-black/30 font-normal">-</span>
                       )}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => enviarRecordatorio(prov.correo)}
-                          title="Enviar recordatorio y OTP"
-                          className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaAzul transition-colors cursor-pointer"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setProveedorSeleccionado(prov)}
-                          title="Ver ficha de evaluación"
-                          className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))
@@ -335,45 +351,31 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                   Puntaje General
                 </span>
                 <span className="text-[24px] font-bold font-mono text-plataformaTexto">
-                  {proveedorSeleccionado.puntajeTotal !== null ? `${proveedorSeleccionado.puntajeTotal}/100` : 'Sin evaluar'}
+                  {proveedorSeleccionado.puntajeTotal !== null && proveedorSeleccionado.puntajeTotal !== undefined
+                    ? Math.round(Number(proveedorSeleccionado.puntajeTotal))
+                    : 'Sin evaluar'}
                 </span>
               </div>
 
-              {proveedorSeleccionado.dimensiones && (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-cuerpo-pequeno mb-1">
-                      <span className="text-plataformaSecundario">Ambiental</span>
-                      <span className="font-mono font-semibold">{proveedorSeleccionado.dimensiones.ambiental}%</span>
+              {proveedorSeleccionado.dimensiones ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(proveedorSeleccionado.dimensiones).map(([codigo, valor]) => (
+                    <div key={codigo} className="p-3 rounded-md-token bg-black/[0.02] border border-black/[0.04] flex items-center justify-between">
+                      <span className="text-subtexto text-plataformaSecundario">{codigo}</span>
+                      <span className="font-mono font-semibold text-plataformaTexto">{Math.round(Number(valor))}</span>
                     </div>
-                    <BarraProgreso porcentaje={proveedorSeleccionado.dimensiones.ambiental} color="bg-emerald-500" />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-cuerpo-pequeno mb-1">
-                      <span className="text-plataformaSecundario">Social</span>
-                      <span className="font-mono font-semibold">{proveedorSeleccionado.dimensiones.social}%</span>
-                    </div>
-                    <BarraProgreso porcentaje={proveedorSeleccionado.dimensiones.social} color="bg-blue-500" />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-cuerpo-pequeno mb-1">
-                      <span className="text-plataformaSecundario">Ética y Gobernanza</span>
-                      <span className="font-mono font-semibold">{proveedorSeleccionado.dimensiones.etica}%</span>
-                    </div>
-                    <BarraProgreso porcentaje={proveedorSeleccionado.dimensiones.etica} color="bg-indigo-500" />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-cuerpo-pequeno mb-1">
-                      <span className="text-plataformaSecundario">Laboral</span>
-                      <span className="font-mono font-semibold">{proveedorSeleccionado.dimensiones.laboral}%</span>
-                    </div>
-                    <BarraProgreso porcentaje={proveedorSeleccionado.dimensiones.laboral} color="bg-amber-500" />
-                  </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-subtexto text-plataformaSecundario">
+                  Este proveedor todavía no completó su evaluación en el portal. El puntaje y las recomendaciones aparecerán aquí en cuanto finalice el cuestionario.
+                </p>
               )}
+
+              <div className="pt-2">
+                <span className="text-etiqueta text-plataformaSecundario block mb-2">Evidencia documental (RF25)</span>
+                <EvidenciaFicha idProveedor={proveedorSeleccionado.idProveedor} />
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -437,7 +439,6 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Representante</label>
                 <input
                   type="text"
-                  required
                   value={nuevoRepresentante}
                   onChange={(e) => setNuevoRepresentante(e.target.value)}
                   className="campo-entrada w-full"
@@ -459,47 +460,40 @@ export default function GestionProveedores({ proveedores, alActualizarProveedore
                 <div>
                   <label className="text-etiqueta text-plataformaSecundario block mb-1">Unidad</label>
                   <select
-                    value={nuevaUnidad}
-                    onChange={(e) => setNuevaUnidad(e.target.value)}
+                    value={nuevaIdUnidad}
+                    onChange={(e) => setNuevaIdUnidad(e.target.value)}
                     className="campo-select w-full"
                   >
-                    <option value="Supermercados Peruanos">Supermercados</option>
-                    <option value="Promart">Promart</option>
-                    <option value="Oechsle">Oechsle</option>
-                    <option value="Real Plaza">Real Plaza</option>
-                    <option value="Farmacias Peruanas">Farmacias</option>
-                    <option value="SIP">SIP</option>
-                    <option value="Intercorp Retail Sucursal China">China</option>
+                    {unidades.map((u) => (
+                      <option key={u.idUnidad} value={u.idUnidad}>{u.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="text-etiqueta text-plataformaSecundario block mb-1">Industria</label>
                   <select
-                    value={nuevaIndustria}
-                    onChange={(e) => setNuevaIndustria(e.target.value)}
+                    value={nuevaIdIndustria}
+                    onChange={(e) => setNuevaIdIndustria(e.target.value)}
                     className="campo-select w-full"
                   >
-                    <option value="Alimentos y Bebidas Envasados">Alimentos</option>
-                    <option value="Transporte, Almacén y Logística">Logística</option>
-                    <option value="Textil, Confecciones y Calzado">Textil</option>
-                    <option value="Servicios Generales y Mantenimiento">Servicios</option>
-                    <option value="Productos Farmacéuticos y Cuidado Personal">Farmacéutica</option>
+                    {industrias.map((i) => (
+                      <option key={i.idIndustria} value={i.idIndustria}>{i.nombre}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="chkCritico"
-                  checked={nuevoEsCritico}
-                  onChange={(e) => setNuevoEsCritico(e.target.checked)}
-                  className="rounded text-plataformaAzul w-4 h-4"
-                />
-                <label htmlFor="chkCritico" className="text-cuerpo-pequeno text-plataformaTexto font-medium cursor-pointer">
-                  Marcar como proveedor crítico de seguimiento
-                </label>
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Tipo</label>
+                <select
+                  value={nuevoTipo}
+                  onChange={(e) => setNuevoTipo(e.target.value)}
+                  className="campo-select w-full"
+                >
+                  <option value="Retail">Retail</option>
+                  <option value="No retail">No retail</option>
+                </select>
               </div>
             </div>
 

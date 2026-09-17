@@ -1,82 +1,46 @@
 import { consultarBaseDatos } from '../configuracion/baseDatos.js';
-import { enviarCodigoAccesoOtp } from '../servicios/servicioCorreo.js';
-
-const almacenesCodigosMemoria = new Map();
-
-export const solicitarCodigoAcceso = async (peticion, respuesta) => {
-  const { correo } = peticion.body;
-
-  if (!correo) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'El correo electrónico es requerido.' });
-  }
-
-  const codigoNumerico = Math.floor(100000 + Math.random() * 900000).toString();
-  const tiempoExpiracion = Date.now() + 10 * 60 * 1000;
-
-  almacenesCodigosMemoria.set(correo.toLowerCase(), {
-    codigo: codigoNumerico,
-    expiracion: tiempoExpiracion
-  });
-
-  await enviarCodigoAccesoOtp(correo, codigoNumerico);
-
-  return respuesta.status(200).json({
-    exito: true,
-    mensaje: 'Código generado y enviado exitosamente.',
-    codigoDemostracion: codigoNumerico
-  });
-};
-
-export const validarCodigoAcceso = async (peticion, respuesta) => {
-  const { correo, codigo } = peticion.body;
-
-  if (!correo || !codigo) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Correo y código son obligatorios.' });
-  }
-
-  const registroEncontrado = almacenesCodigosMemoria.get(correo.toLowerCase());
-
-  if (!registroEncontrado) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'No existe solicitud de código vigente para este correo.' });
-  }
-
-  if (Date.now() > registroEncontrado.expiracion) {
-    almacenesCodigosMemoria.delete(correo.toLowerCase());
-    return respuesta.status(400).json({ exito: false, mensaje: 'El código ha expirado. Solicite uno nuevo.' });
-  }
-
-  if (registroEncontrado.codigo !== codigo) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'El código ingresado es incorrecto.' });
-  }
-
-  almacenesCodigosMemoria.delete(correo.toLowerCase());
-
-  return respuesta.status(200).json({
-    exito: true,
-    mensaje: 'Autenticación exitosa.',
-    tokenAcceso: `token-${Date.now()}`
-  });
-};
+import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 
 export const obtenerListaProveedores = async (peticion, respuesta) => {
   try {
+    const esCorporativo = !peticion.usuario.idUnidad;
     const consulta = `
-      SELECT 
-        p.id_proveedor AS id,
+      SELECT
+        p.id_proveedor AS "idProveedor",
         p.ruc,
         p.razon_social AS "razonSocial",
         p.representante,
         p.correo,
         p.tipo,
         p.es_critico AS "esCritico",
-        COALESCE(u.nombre, 'Sin Asignar') AS unidad,
-        COALESCE(i.nombre, 'Sin Asignar') AS industria
+        p.creado_en AS "creadoEn",
+        COALESCE(u.nombre, 'Sin asignar') AS unidad,
+        u.id_unidad AS "idUnidad",
+        COALESCE(i.nombre, 'Sin asignar') AS industria,
+        ev.estado AS "estadoEvaluacion",
+        ev.fecha_envio AS "fechaEvaluacion",
+        ev.puntaje_total AS "puntajeTotal",
+        dim.por_dimension AS "dimensiones"
       FROM proveedor p
-      LEFT JOIN unidad_negocio u ON p.fk_id_unidad = u.id_unidad
-      LEFT JOIN industria i ON p.fk_id_industria = i.id_industria
+      LEFT JOIN unidad_negocio u ON p.id_unidad = u.id_unidad
+      LEFT JOIN industria i ON p.id_industria = i.id_industria
+      LEFT JOIN LATERAL (
+        SELECT id_evaluacion, estado, fecha_envio, puntaje_total
+        FROM evaluacion
+        WHERE id_proveedor = p.id_proveedor
+        ORDER BY id_evaluacion DESC
+        LIMIT 1
+      ) ev ON true
+      LEFT JOIN LATERAL (
+        SELECT json_object_agg(d.codigo, pd.valor) AS por_dimension
+        FROM puntaje_dimension pd
+        JOIN dimension d ON d.id_dimension = pd.id_dimension
+        WHERE pd.id_evaluacion = ev.id_evaluacion
+      ) dim ON true
+      WHERE $1::boolean OR p.id_unidad = $2
       ORDER BY p.id_proveedor ASC;
     `;
-    const resultado = await consultarBaseDatos(consulta);
+    const resultado = await consultarBaseDatos(consulta, [esCorporativo, peticion.usuario.idUnidad]);
     return respuesta.status(200).json({
       exito: true,
       proveedores: resultado.rows
@@ -87,21 +51,22 @@ export const obtenerListaProveedores = async (peticion, respuesta) => {
 };
 
 export const incorporarNuevoProveedor = async (peticion, respuesta) => {
-  const { ruc, razonSocial, representante, correo, idUnidad, idIndustria, esCritico } = peticion.body;
+  const { ruc, razonSocial, representante, correo, tipo, idUnidad, idIndustria } = peticion.body;
 
-  if (!ruc || !razonSocial || !representante || !correo) {
+  if (!ruc || !razonSocial || !correo || !idUnidad) {
     return respuesta.status(400).json({ exito: false, mensaje: 'Faltan campos obligatorios para el registro.' });
   }
 
   try {
-    const tipo = esCritico ? 'Crítico' : 'Regular';
     const consulta = `
-      INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, es_critico, fk_id_unidad, fk_id_industria)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id_proveedor AS id, ruc, razon_social AS "razonSocial", representante, correo, tipo, es_critico AS "esCritico";
+      INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_unidad, id_industria)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id_proveedor AS "idProveedor", ruc, razon_social AS "razonSocial", representante, correo, tipo, es_critico AS "esCritico";
     `;
-    const valores = [ruc, razonSocial, representante, correo, tipo, !!esCritico, idUnidad || 1, idIndustria || 1];
+    const valores = [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idUnidad, idIndustria || null];
     const resultado = await consultarBaseDatos(consulta, valores);
+
+    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Incorporó al proveedor ${razonSocial} (RUC ${ruc})` });
 
     return respuesta.status(201).json({
       exito: true,
@@ -109,7 +74,38 @@ export const incorporarNuevoProveedor = async (peticion, respuesta) => {
       proveedor: resultado.rows[0]
     });
   } catch (error) {
+    if (error.code === '23505') {
+      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe un proveedor con ese RUC.' });
+    }
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al insertar proveedor en base de datos.' });
+  }
+};
+
+export const alternarProveedorCritico = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  const { esCritico } = peticion.body;
+
+  try {
+    const esCorporativo = !peticion.usuario.idUnidad;
+    const consulta = `
+      UPDATE proveedor SET es_critico = $1
+      WHERE id_proveedor = $2 AND ($3::boolean OR id_unidad = $4)
+      RETURNING id_proveedor AS "idProveedor", razon_social AS "razonSocial", es_critico AS "esCritico";
+    `;
+    const resultado = await consultarBaseDatos(consulta, [!!esCritico, id, esCorporativo, peticion.usuario.idUnidad]);
+
+    if (!resultado.rows[0]) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado o fuera de su unidad de negocio.' });
+    }
+
+    await registrarAuditoria({
+      idUsuario: peticion.usuario.idUsuario,
+      accion: `${esCritico ? 'Marcó' : 'Desmarcó'} como crítico al proveedor ${resultado.rows[0].razonSocial}`
+    });
+
+    return respuesta.status(200).json({ exito: true, proveedor: resultado.rows[0] });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al actualizar la condición crítica del proveedor.' });
   }
 };
 

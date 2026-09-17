@@ -27,3 +27,13 @@ dist-ssr
 .env
 .env.production
 .env.local
+.env.deploy.yaml
+
+# Google Cloud service account keys (downloaded to project root)
+/plataforma-sostenibilidad-*.json
+
+# Wrangler local cache
+.wrangler
+
+# Reportes exportados manualmente durante pruebas (pueden caer en la raíz por el navegador)
+/Reporte_Proveedores_*.csv

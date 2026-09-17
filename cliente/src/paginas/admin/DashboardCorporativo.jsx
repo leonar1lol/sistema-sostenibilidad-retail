@@ -12,54 +12,40 @@ import {
   BarChart3,
   Sliders,
   History,
-  Shield
+  Shield,
+  Megaphone
 } from 'lucide-react';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import GestionProveedores from './GestionProveedores.jsx';
 import BancoPreguntas from './BancoPreguntas.jsx';
+import GestionCampanias from './GestionCampanias.jsx';
 import GestionUsuariosRoles from './GestionUsuariosRoles.jsx';
 import ConfiguracionUnidadesIndustrias from './ConfiguracionUnidadesIndustrias.jsx';
 import BitacoraAuditoria from './BitacoraAuditoria.jsx';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
-import { consultarProveedoresApi } from '../../servicios/servicioApi.js';
-import {
-  listaProveedoresIniciales,
-  catalogoPreguntasCompleto,
-  listaUnidadesNegocio,
-  listaRegistrosAuditoria
-} from '../../datos/datosIniciales.js';
+import { listarProveedoresAdminApi, listarUnidadesApi } from '../../servicios/servicioApi.js';
 
 export default function DashboardCorporativo() {
   const [pestanaActiva, setPestanaActiva] = useState('resumen');
-  const [proveedores, setProveedores] = useState(listaProveedoresIniciales);
-  const [catalogoItems, setCatalogoItems] = useState(catalogoPreguntasCompleto);
-  const [registrosAuditoria, setRegistrosAuditoria] = useState(listaRegistrosAuditoria);
+  const [proveedores, setProveedores] = useState([]);
+  const [unidades, setUnidades] = useState([]);
   const [unidadSeleccionada, setUnidadSeleccionada] = useState('todas');
   const [soloCriticosActivo, setSoloCriticosActivo] = useState(false);
 
   useEffect(() => {
     async function sincronizarConBaseDatos() {
-      const proveedoresRemotos = await consultarProveedoresApi();
-      if (proveedoresRemotos && proveedoresRemotos.length > 0) {
+      try {
+        const [proveedoresRemotos, unidadesRemotas] = await Promise.all([
+          listarProveedoresAdminApi(),
+          listarUnidadesApi()
+        ]);
         setProveedores(proveedoresRemotos);
+        setUnidades(unidadesRemotas);
+      } catch {
       }
     }
     sincronizarConBaseDatos();
   }, []);
-
-  const registrarEventoAuditoria = ({ accion, modulo, detalles }) => {
-    const nuevoRegistro = {
-      id: Date.now(),
-      fechaHora: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      usuario: 'Leonardo Solano',
-      rol: 'Administrador Corporativo',
-      accion,
-      modulo,
-      detalles,
-      estado: 'Exitoso'
-    };
-    setRegistrosAuditoria([nuevoRegistro, ...registrosAuditoria]);
-  };
 
   const proveedoresParaMetricas = proveedores.filter((p) => {
     const coincideUnidad = unidadSeleccionada === 'todas' || p.unidad === unidadSeleccionada;
@@ -69,28 +55,27 @@ export default function DashboardCorporativo() {
 
   const totalProveedores = proveedoresParaMetricas.length;
   const criticosTotales = proveedoresParaMetricas.filter((p) => p.esCritico).length;
-  const encuestasCompletadas = proveedoresParaMetricas.filter((p) => p.estado === 'Evaluado').length;
-  const sumaPuntajes = proveedoresParaMetricas.reduce((acc, p) => acc + (p.puntajeTotal || 0), 0);
-  const promedioAvance = encuestasCompletadas > 0 ? Math.round(sumaPuntajes / encuestasCompletadas) : 70;
+  const evaluados = proveedoresParaMetricas.filter((p) => p.estadoEvaluacion === 'Finalizado');
+  const encuestasCompletadas = evaluados.length;
+  const sumaPuntajes = evaluados.reduce((acc, p) => acc + Number(p.puntajeTotal || 0), 0);
+  const promedioAvance = encuestasCompletadas > 0 ? Math.round(sumaPuntajes / encuestasCompletadas) : 0;
 
-  const unidadesConMetricas = listaUnidadesNegocio.map((u) => {
-    const proveedoresDeEstaUnidad = proveedores.filter((p) => p.unidad === u.nombre);
-    const evaluados = proveedoresDeEstaUnidad.filter((p) => p.estado === 'Evaluado').length;
-    const porcentaje = u.meta > 0 ? Math.round((evaluados / u.meta) * 100) : 0;
+  const unidadesConMetricas = unidades.map((u) => {
+    const proveedoresDeEstaUnidad = proveedores.filter((p) => p.idUnidad === u.idUnidad);
+    const criticosDeEstaUnidad = proveedoresDeEstaUnidad.filter((p) => p.esCritico);
+    const evaluadosDeEstaUnidad = criticosDeEstaUnidad.filter((p) => p.estadoEvaluacion === 'Finalizado').length;
+    const meta = criticosDeEstaUnidad.length;
+    const porcentaje = meta > 0 ? Math.round((evaluadosDeEstaUnidad / meta) * 100) : 0;
     return {
       ...u,
-      evaluados,
+      evaluados: evaluadosDeEstaUnidad,
+      meta,
       porcentaje
     };
   });
 
   const descargarReporteExcel = () => {
     exportarProveedoresAExcel(proveedoresParaMetricas);
-    registrarEventoAuditoria({
-      accion: 'Exportación a Excel',
-      modulo: 'Dashboard Resumen',
-      detalles: `Descarga de reporte con ${proveedoresParaMetricas.length} registros para ${unidadSeleccionada}`
-    });
   };
 
   return (
@@ -139,6 +124,17 @@ export default function DashboardCorporativo() {
           >
             <Database className="w-4 h-4" />
             <span>Banco de Ítems</span>
+          </button>
+          <button
+            onClick={() => setPestanaActiva('campanias')}
+            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              pestanaActiva === 'campanias'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                : 'text-plataformaSecundario hover:text-plataformaTexto'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            <span>Campañas</span>
           </button>
           <button
             onClick={() => setPestanaActiva('usuarios')}
@@ -296,7 +292,7 @@ export default function DashboardCorporativo() {
             <div className="space-y-0">
               {unidadesConMetricas.map((unidad) => (
                 <div
-                  key={unidad.id}
+                  key={unidad.idUnidad}
                   className="py-4 border-b border-black/[0.04] last:border-0 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-3 md:w-1/3">
@@ -351,51 +347,17 @@ export default function DashboardCorporativo() {
         </div>
       )}
 
-      {pestanaActiva === 'proveedores' && (
-        <GestionProveedores
-          proveedores={proveedores}
-          alActualizarProveedores={(nuevos) => {
-            setProveedores(nuevos);
-            registrarEventoAuditoria({
-              accion: 'Modificación en Directorio de Proveedores',
-              modulo: 'Directorio',
-              detalles: `Actualizado el padrón corporativo (Total: ${nuevos.length} proveedores)`
-            });
-          }}
-        />
-      )}
+      {pestanaActiva === 'proveedores' && <GestionProveedores />}
 
-      {pestanaActiva === 'banco' && (
-        <BancoPreguntas
-          catalogoItems={catalogoItems}
-          alActualizarCatalogo={(nuevos) => {
-            setCatalogoItems(nuevos);
-            registrarEventoAuditoria({
-              accion: 'Actualización en Banco de Preguntas',
-              modulo: 'Banco de Preguntas',
-              detalles: `Modificada la parametrización de ítems (Total: ${nuevos.length} preguntas)`
-            });
-          }}
-        />
-      )}
+      {pestanaActiva === 'banco' && <BancoPreguntas />}
 
-      {pestanaActiva === 'usuarios' && (
-        <GestionUsuariosRoles
-          alRegistrarAuditoria={registrarEventoAuditoria}
-        />
-      )}
+      {pestanaActiva === 'campanias' && <GestionCampanias />}
 
-      {pestanaActiva === 'configuracion' && (
-        <ConfiguracionUnidadesIndustrias
-          alRegistrarAuditoria={registrarEventoAuditoria}
-        />
-      )}
+      {pestanaActiva === 'usuarios' && <GestionUsuariosRoles />}
 
-      {pestanaActiva === 'auditoria' && (
-        <BitacoraAuditoria
-          registrosAuditoria={registrosAuditoria}
-        />
-      )}
+      {pestanaActiva === 'configuracion' && <ConfiguracionUnidadesIndustrias />}
+
+      {pestanaActiva === 'auditoria' && <BitacoraAuditoria />}
     </div>
   );
 }
