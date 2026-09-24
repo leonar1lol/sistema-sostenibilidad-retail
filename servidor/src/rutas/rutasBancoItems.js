@@ -4,6 +4,7 @@ import {
   listarItems,
   crearItem,
   editarItem,
+  cambiarEstadoItem,
   actualizarIndustriasDelItem,
   agregarAlternativa,
   editarAlternativa,
@@ -20,6 +21,7 @@ enrutadorBancoItems.use(verificarSesion);
 enrutadorBancoItems.get('/items', listarItems);
 enrutadorBancoItems.post('/items', requierePermiso('configurar_banco_items'), crearItem);
 enrutadorBancoItems.put('/items/:id', requierePermiso('configurar_banco_items'), editarItem);
+enrutadorBancoItems.patch('/items/:id/estado', requierePermiso('configurar_banco_items'), cambiarEstadoItem);
 enrutadorBancoItems.put('/items/:id/industrias', requierePermiso('configurar_banco_items'), actualizarIndustriasDelItem);
 enrutadorBancoItems.post('/items/:id/alternativas', requierePermiso('configurar_banco_items'), agregarAlternativa);
 enrutadorBancoItems.put('/alternativas/:idAlternativa', requierePermiso('configurar_banco_items'), editarAlternativa);

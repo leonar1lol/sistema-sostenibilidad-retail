@@ -43,7 +43,7 @@ La plataforma tiene dos accesos, separados por ruta para que el portal público 
 * **Backend:** Node.js, Express — contenedor en Google Cloud Run
 * **Base de datos:** PostgreSQL serverless (Neon)
 * **Almacenamiento de archivos:** Cloudflare R2 (evidencia documental, RF25)
-* **Correo transaccional:** Resend (OTP, recordatorios, resultados)
+* **Correo transaccional:** Brevo (OTP, recordatorios, resultados) — plan gratuito, sin necesidad de dominio propio
 * **Observabilidad:** Sentry (errores de aplicación, backend y frontend por separado) + UptimeRobot (disponibilidad, ping cada 5 min)
 
 Ver `documentacion/ARQUITECTURA_DATOS.md` para el modelo de datos completo (diagrama entidad-relación, normalización en 3FN, claves primarias y foráneas).
@@ -83,7 +83,7 @@ MINUTOS_VIGENCIA_OTP=10
 URL_BASE_APP=http://localhost:5173
 ```
 
-`CLAVE_API_RESEND`, `CORREO_REMITENTE_RESEND`, `SENTRY_DSN` y las variables `R2_*` son opcionales: sin ellas, el backend sigue funcionando (correo cae a "modo demo" con el código visible en pantalla, sin bloquear el flujo — ver `provider-portal/SKILL.md`).
+`CLAVE_API_BREVO`, `CORREO_REMITENTE_BREVO`, `SENTRY_DSN` y las variables `R2_*` son opcionales: sin ellas, el backend sigue funcionando (correo cae a "modo demo" con el código visible en pantalla, sin bloquear el flujo).
 
 ### 4. Inicializar el esquema de base de datos
 
@@ -111,7 +111,7 @@ npm run servidor:desarrollo  # http://localhost:4000
   * `fbeltran@intercorpretail.pe` — Gerente de Unidad de Negocio (Oechsle)
   * `gnavarro@intercorpretail.pe` — Consulta (solo lectura)
   * Contraseña para los cinco: `Admin2026`
-* **Portal del Proveedor** (`/`) — sin contraseña, acceso por OTP real. Ingresa cualquier correo; el código de un solo uso se envía por Resend, o se muestra en pantalla como "Modo demo" si el correo de destino no está verificado en el proveedor de correo (limitación de la cuenta de prueba de Resend, no un bug).
+* **Portal del Proveedor** (`/`) — sin contraseña, acceso por OTP real. Ingresa cualquier correo; el código de un solo uso se envía por Brevo a cualquier destinatario (plan gratuito, 300 correos/día). Si `CLAVE_API_BREVO` no está configurada, se muestra en pantalla como "Modo demo".
 
 ---
 

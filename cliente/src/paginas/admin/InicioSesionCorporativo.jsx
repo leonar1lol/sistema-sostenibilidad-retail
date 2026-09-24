@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { iniciarSesionApi } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 export default function InicioSesionCorporativo({ alIniciarSesion }) {
   const [correo, setCorreo] = useState('admin@intercorpretail.pe');
   const [clave, setClave] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
 
   const manejarEnvio = async (evento) => {
     evento.preventDefault();

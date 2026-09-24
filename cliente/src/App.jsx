@@ -97,7 +97,7 @@ export default function AplicacionPrincipal() {
               {...transicionPagina}
             >
               {sesionCorporativa ? (
-                <DashboardCorporativo />
+                <DashboardCorporativo sesionCorporativa={sesionCorporativa} />
               ) : (
                 <InicioSesionCorporativo alIniciarSesion={iniciarSesionCorporativa} />
               )}

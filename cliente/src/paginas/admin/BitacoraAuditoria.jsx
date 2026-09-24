@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { History, AlertCircle } from 'lucide-react';
 import { listarAuditoriaApi } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 export default function BitacoraAuditoria() {
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
 
   useEffect(() => {
     async function cargar() {

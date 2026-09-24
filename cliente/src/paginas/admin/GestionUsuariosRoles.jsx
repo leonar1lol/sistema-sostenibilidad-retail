@@ -17,6 +17,7 @@ import {
   actualizarPermisoDeRolApi,
   listarUnidadesApi
 } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
   const [vistaInterna, setVistaInterna] = useState('usuarios');
@@ -28,7 +29,7 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
   const [cargando, setCargando] = useState(true);
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
 
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoCorreo, setNuevoCorreo] = useState('');

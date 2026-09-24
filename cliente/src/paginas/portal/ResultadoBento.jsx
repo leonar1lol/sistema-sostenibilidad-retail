@@ -45,8 +45,8 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
   const manejarReinicio = alReiniciar || volverAlInicio;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-4xl mx-auto py-6 px-3 sm:py-10 sm:px-4">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="insignia-neutra mb-1">Resultados Oficiales</span>
           <h2 className="text-titulo-pagina text-plataformaTexto mt-1">
@@ -57,7 +57,7 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => window.print()}
             className="boton-secundario text-xs flex items-center gap-1.5 cursor-pointer"
@@ -77,14 +77,14 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-        <TarjetaBento clasePersonalizada="md:col-span-1 flex flex-col justify-between p-8 shadow-sm-token">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 mb-4 sm:mb-5">
+        <TarjetaBento clasePersonalizada="md:col-span-1 flex flex-col justify-between p-6 sm:p-8 shadow-sm-token">
           <div>
             <span className="text-etiqueta text-plataformaSecundario block">
               Puntaje Global
             </span>
             <div className="mt-3 flex items-baseline gap-1.5">
-              <span className="text-[64px] font-semibold tracking-[-0.04em] text-plataformaTexto leading-none font-sans">
+              <span className="text-[48px] sm:text-[64px] font-semibold tracking-[-0.04em] text-plataformaTexto leading-none font-sans">
                 {puntajeGlobal}
               </span>
               <span className="text-titulo-seccion text-plataformaSecundario">
@@ -104,7 +104,7 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
           </div>
         </TarjetaBento>
 
-        <TarjetaBento clasePersonalizada="md:col-span-2 p-8 shadow-sm-token">
+        <TarjetaBento clasePersonalizada="md:col-span-2 p-6 sm:p-8 shadow-sm-token">
           <div className="flex items-center justify-between mb-5">
             <span className="text-etiqueta text-plataformaSecundario">
               Dimensiones de Sostenibilidad
@@ -146,7 +146,7 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
         </TarjetaBento>
       </div>
 
-      <TarjetaBento clasePersonalizada="p-8 shadow-sm-token">
+      <TarjetaBento clasePersonalizada="p-6 sm:p-8 shadow-sm-token">
         <div className="flex items-center gap-3 mb-5">
           <div className="p-2 rounded-md-token bg-plataformaAzul/[0.08] text-plataformaAzul">
             <Sparkles className="w-4 h-4 stroke-[1.8]" />

@@ -4,8 +4,8 @@ import {
   listarCampanias,
   crearCampania,
   cambiarEstadoCampania,
+  eliminarCampania,
   listarEvaluacionesDeCampania,
-  asignarEvaluacion,
   enviarRecordatorio
 } from '../controladores/controladorCampania.js';
 
@@ -13,10 +13,10 @@ export const enrutadorCampania = Router();
 
 enrutadorCampania.use(verificarSesion);
 
-enrutadorCampania.get('/', listarCampanias);
+enrutadorCampania.get('/', requierePermiso('crear_publicar_campanias'), listarCampanias);
 enrutadorCampania.post('/', requierePermiso('crear_publicar_campanias'), crearCampania);
 enrutadorCampania.patch('/:id/estado', requierePermiso('crear_publicar_campanias'), cambiarEstadoCampania);
+enrutadorCampania.delete('/:id', requierePermiso('crear_publicar_campanias'), eliminarCampania);
 
 enrutadorCampania.get('/:id/evaluaciones', listarEvaluacionesDeCampania);
-enrutadorCampania.post('/:id/evaluaciones', requierePermiso('asignar_evaluaciones'), asignarEvaluacion);
 enrutadorCampania.post('/evaluaciones/:idEvaluacion/recordatorio', requierePermiso('asignar_evaluaciones'), enviarRecordatorio);

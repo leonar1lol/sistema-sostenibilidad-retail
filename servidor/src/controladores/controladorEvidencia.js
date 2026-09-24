@@ -101,7 +101,9 @@ export const listarEvidenciaProveedorAdmin = async (peticion, respuesta) => {
 
   try {
     const proveedor = await consultarBaseDatos(
-      'SELECT id_proveedor FROM proveedor WHERE id_proveedor = $1 AND ($2::boolean OR id_unidad = $3)',
+      `SELECT id_proveedor FROM proveedor WHERE id_proveedor = $1 AND ($2::boolean OR EXISTS (
+         SELECT 1 FROM proveedor_unidad_negocio pun WHERE pun.id_proveedor = proveedor.id_proveedor AND pun.id_unidad = $3
+       ))`,
       [idProveedor, esCorporativo, peticion.usuario.idUnidad]
     );
     if (!proveedor.rows[0]) {
@@ -110,7 +112,7 @@ export const listarEvidenciaProveedorAdmin = async (peticion, respuesta) => {
 
     const evidencias = await consultarBaseDatos(
       `SELECT e.id_evidencia AS "idEvidencia", e.nombre_archivo AS "nombreArchivo", e.tipo_mime AS "tipoMime",
-              e.tamano_bytes AS "tamanoBytes", e.subido_en AS "subidoEn", e.clave_r2 AS "claveR2", i.codigo AS "codigoItem"
+              e.tamano_bytes AS "tamanoBytes", e.subido_en AS "subidoEn", e.clave_r2 AS "claveR2", i.enunciado AS "enunciadoItem"
        FROM evidencia e
        JOIN respuesta r ON r.id_respuesta = e.id_respuesta
        JOIN item i ON i.id_item = r.id_item

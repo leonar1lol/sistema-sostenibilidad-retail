@@ -11,6 +11,7 @@ import {
   subirEvidenciaPortalApi,
   eliminarEvidenciaPortalApi
 } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 const TAMANO_MAXIMO_MB = 5;
 
@@ -93,7 +94,7 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
   const [respuestas, setRespuestas] = useState({});
   const [dimensionActiva, setDimensionActiva] = useState(null);
   const [mensajeInfo, setMensajeInfo] = useState('');
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -157,7 +158,7 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
 
   if (cargando) {
     return (
-      <div className="max-w-3xl mx-auto py-16 px-4 text-center text-cuerpo-pequeno text-plataformaSecundario">
+      <div className="max-w-3xl mx-auto py-16 px-3 sm:px-4 text-center text-cuerpo-pequeno text-plataformaSecundario">
         Cargando su cuestionario…
       </div>
     );
@@ -165,8 +166,8 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
 
   if (items.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto py-16 px-4">
-        <TarjetaBento clasePersonalizada="p-8 text-center shadow-sm-token">
+      <div className="max-w-3xl mx-auto py-16 px-3 sm:px-4">
+        <TarjetaBento clasePersonalizada="p-6 sm:p-8 text-center shadow-sm-token">
           <AlertCircle className="w-8 h-8 text-plataformaSecundario mx-auto mb-3 opacity-60" />
           <h3 className="text-titulo-seccion text-plataformaTexto mb-2">Cuestionario no disponible todavía</h3>
           <p className="text-cuerpo-pequeno text-plataformaSecundario">
@@ -180,8 +181,8 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
   const todoRespondido = totalRespondidos === itemsAplicablesVisibles.length && itemsAplicablesVisibles.length > 0;
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
-      <TarjetaBento clasePersonalizada="p-6 mb-5 shadow-sm-token">
+    <div className="max-w-3xl mx-auto pt-4 pb-28 px-3 sm:py-8 sm:px-4">
+      <TarjetaBento clasePersonalizada="p-4 sm:p-6 mb-4 sm:mb-5 shadow-sm-token">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
             <span className="text-etiqueta text-plataformaSecundario block">
@@ -200,6 +201,12 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
             </span>
           </div>
         </div>
+
+        {reglas.length > 0 && (
+          <p className="text-subtexto text-plataformaSecundario mb-3">
+            Según algunas de sus respuestas, pueden aparecer o dejar de aplicar preguntas adicionales.
+          </p>
+        )}
 
         <BarraProgreso porcentaje={porcentajeAvance} altura="h-1" />
 
@@ -237,31 +244,41 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
         </div>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {itemsDeDimensionActiva.map((item) => {
           const respuestaElegida = respuestas[item.idItem];
           const deshabilitado = visibilidad[item.idItem]?.deshabilitado;
+          const reglaQueLoDeshabilita = deshabilitado
+            ? reglas.find(
+                (r) =>
+                  r.idItemDestino === item.idItem &&
+                  r.accion === 'deshabilitar' &&
+                  respuestas[r.idItemOrigen] === r.idAlternativaDisparadora
+              )
+            : null;
 
           return (
-            <TarjetaBento key={item.idItem} clasePersonalizada={`p-6 shadow-sm-token ${deshabilitado ? 'opacity-50' : ''}`}>
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="insignia-info font-mono font-bold">{item.codigo}</span>
-                {deshabilitado && (
+            <TarjetaBento key={item.idItem} clasePersonalizada={`p-4 sm:p-6 shadow-sm-token ${deshabilitado ? 'opacity-50' : ''}`}>
+              {deshabilitado && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                   <span className="insignia-neutra flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Deshabilitado por regla condicional
+                    <Lock className="w-3 h-3" />
+                    {reglaQueLoDeshabilita
+                      ? `Deshabilitado porque respondió "${reglaQueLoDeshabilita.textoAlternativaDisparadora}" en "${reglaQueLoDeshabilita.enunciadoItemOrigen}"`
+                      : 'Deshabilitado por una respuesta anterior'}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
               <h3 className="text-cuerpo font-medium text-plataformaTexto mb-4">{item.enunciado}</h3>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2 sm:space-y-2.5">
                 {item.alternativas.map((alternativa) => {
                   const estaSeleccionada = respuestaElegida === alternativa.idAlternativa;
                   return (
                     <div
                       key={alternativa.idAlternativa}
                       onClick={() => !deshabilitado && seleccionarAlternativa(item.idItem, alternativa.idAlternativa)}
-                      className={`p-4 rounded-md-token border transition-all duration-180 flex items-center gap-3 ${
+                      className={`p-3.5 sm:p-4 rounded-md-token border transition-all duration-180 flex items-center gap-3 ${
                         deshabilitado ? 'cursor-not-allowed border-black/[0.06]' : 'cursor-pointer'
                       } ${
                         estaSeleccionada
@@ -286,16 +303,21 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
         })}
       </div>
 
-      <div className="flex items-center justify-end pt-6">
-        <button
-          type="button"
-          disabled={!todoRespondido || enviando}
-          onClick={finalizar}
-          className={`boton-primario ${!todoRespondido || enviando ? 'opacity-40 cursor-not-allowed' : ''}`}
-        >
-          <span>{enviando ? 'Enviando...' : 'Finalizar evaluación'}</span>
-          <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-black/[0.06] px-3 py-3 sm:px-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <span className="text-subtexto text-plataformaSecundario shrink-0">
+            {todoRespondido ? 'Todo listo' : `Faltan ${itemsAplicablesVisibles.length - totalRespondidos}`}
+          </span>
+          <button
+            type="button"
+            disabled={!todoRespondido || enviando}
+            onClick={finalizar}
+            className={`boton-primario w-full sm:w-auto ${!todoRespondido || enviando ? 'opacity-40 cursor-not-allowed' : ''}`}
+          >
+            <span>{enviando ? 'Enviando...' : 'Finalizar evaluación'}</span>
+            <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
+          </button>
+        </div>
       </div>
     </div>
   );

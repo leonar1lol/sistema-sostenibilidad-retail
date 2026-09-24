@@ -3,13 +3,15 @@ import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 
 export const listarItems = async (peticion, respuesta) => {
   try {
+    const incluirInactivos = peticion.query.incluirInactivos === 'true';
     const items = await consultarBaseDatos(`
-      SELECT i.id_item AS "idItem", i.codigo, i.enunciado, i.peso, i.id_dimension AS "idDimension",
+      SELECT i.id_item AS "idItem", i.codigo, i.enunciado, i.peso, i.id_dimension AS "idDimension", i.activo,
              d.codigo AS "codigoDimension", d.nombre AS "nombreDimension"
       FROM item i
       JOIN dimension d ON d.id_dimension = i.id_dimension
+      WHERE $1::boolean OR i.activo = TRUE
       ORDER BY i.id_item ASC
-    `);
+    `, [incluirInactivos]);
 
     const alternativas = await consultarBaseDatos(`
       SELECT id_alternativa AS "idAlternativa", id_item AS "idItem", texto, puntaje, orden
@@ -34,46 +36,65 @@ export const listarItems = async (peticion, respuesta) => {
 };
 
 export const crearItem = async (peticion, respuesta) => {
-  const { codigo, enunciado, peso, idDimension, alternativas, idsIndustrias } = peticion.body;
+  const { enunciado, peso, idDimension, alternativas, idsIndustrias } = peticion.body;
 
-  if (!codigo || !enunciado || !idDimension || !Array.isArray(alternativas) || alternativas.length < 2) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Código, enunciado, dimensión y al menos dos alternativas son obligatorios.' });
+  if (!enunciado || !idDimension || !Array.isArray(alternativas) || alternativas.length < 2) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Enunciado, dimensión y al menos dos alternativas son obligatorios.' });
   }
 
   try {
-    const idItem = await ejecutarTransaccion(async (cliente) => {
+    const { nuevoIdItem, codigo } = await ejecutarTransaccion(async (cliente) => {
+      const dimensionResultado = await cliente.query(
+        'SELECT codigo FROM dimension WHERE id_dimension = $1',
+        [idDimension]
+      );
+      if (!dimensionResultado.rows[0]) {
+        throw Object.assign(new Error('Dimensión no encontrada.'), { codigoHttp: 404 });
+      }
+      const codigoDimension = dimensionResultado.rows[0].codigo;
+
+      // El código (ej. "AMB-03") es un identificador interno para reglas
+      // condicionales y seed scripts; se autogenera por dimensión para que el
+      // admin nunca tenga que inventarlo ni recordar el siguiente número.
+      const siguienteResultado = await cliente.query(
+        `SELECT COALESCE(MAX(CAST(SPLIT_PART(codigo, '-', 2) AS INTEGER)), 0) + 1 AS siguiente
+         FROM item WHERE codigo LIKE $1`,
+        [`${codigoDimension}-%`]
+      );
+      const codigoGenerado = `${codigoDimension}-${String(siguienteResultado.rows[0].siguiente).padStart(2, '0')}`;
+
       const resultadoItem = await cliente.query(
         `INSERT INTO item (codigo, enunciado, peso, id_dimension) VALUES ($1, $2, $3, $4) RETURNING id_item`,
-        [codigo, enunciado, peso || 1.0, idDimension]
+        [codigoGenerado, enunciado, peso || 1.0, idDimension]
       );
-      const nuevoIdItem = resultadoItem.rows[0].id_item;
+      const idItemCreado = resultadoItem.rows[0].id_item;
 
       for (let indice = 0; indice < alternativas.length; indice += 1) {
         const alt = alternativas[indice];
         await cliente.query(
           `INSERT INTO alternativa (id_item, texto, puntaje, orden) VALUES ($1, $2, $3, $4)`,
-          [nuevoIdItem, alt.texto, alt.puntaje, indice]
+          [idItemCreado, alt.texto, alt.puntaje, indice]
         );
       }
 
       for (const idIndustria of idsIndustrias || []) {
         await cliente.query(
           `INSERT INTO item_industria (id_item, id_industria, obligatorio) VALUES ($1, $2, TRUE)`,
-          [nuevoIdItem, idIndustria]
+          [idItemCreado, idIndustria]
         );
       }
 
-      return nuevoIdItem;
+      return { nuevoIdItem: idItemCreado, codigo: codigoGenerado };
     });
 
     await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Creó el ítem ${codigo} en el banco de preguntas` });
 
-    return respuesta.status(201).json({ exito: true, idItem });
+    return respuesta.status(201).json({ exito: true, idItem: nuevoIdItem });
   } catch (error) {
     if (error.code === '23505') {
-      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe un ítem con ese código.' });
+      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe un ítem con ese código. Intente nuevamente.' });
     }
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al crear el ítem.' });
+    return respuesta.status(error.codigoHttp || 500).json({ exito: false, mensaje: error.codigoHttp ? error.message : 'Error al crear el ítem.' });
   }
 };
 
@@ -94,6 +115,27 @@ export const editarItem = async (peticion, respuesta) => {
     return respuesta.status(200).json({ exito: true, item: resultado.rows[0] });
   } catch (error) {
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al editar el ítem.' });
+  }
+};
+
+export const cambiarEstadoItem = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  const { activo } = peticion.body;
+  try {
+    const resultado = await consultarBaseDatos(
+      `UPDATE item SET activo = $1 WHERE id_item = $2 RETURNING id_item AS "idItem", codigo, activo`,
+      [!!activo, id]
+    );
+    if (!resultado.rows[0]) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Ítem no encontrado.' });
+    }
+    await registrarAuditoria({
+      idUsuario: peticion.usuario.idUsuario,
+      accion: `${activo ? 'Reactivó' : 'Dio de baja al'} ítem ${resultado.rows[0].codigo}`
+    });
+    return respuesta.status(200).json({ exito: true, item: resultado.rows[0] });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al cambiar el estado del ítem.' });
   }
 };
 
@@ -179,9 +221,9 @@ export const listarReglasCondicionales = async (peticion, respuesta) => {
   try {
     const resultado = await consultarBaseDatos(`
       SELECT rc.id_regla AS "idRegla", rc.accion,
-             rc.id_item_origen AS "idItemOrigen", io.codigo AS "codigoItemOrigen",
+             rc.id_item_origen AS "idItemOrigen", io.enunciado AS "enunciadoItemOrigen",
              rc.id_alternativa_disparadora AS "idAlternativaDisparadora", ad.texto AS "textoAlternativaDisparadora",
-             rc.id_item_destino AS "idItemDestino", id.codigo AS "codigoItemDestino"
+             rc.id_item_destino AS "idItemDestino", id.enunciado AS "enunciadoItemDestino"
       FROM regla_condicional rc
       JOIN item io ON io.id_item = rc.id_item_origen
       JOIN alternativa ad ON ad.id_alternativa = rc.id_alternativa_disparadora

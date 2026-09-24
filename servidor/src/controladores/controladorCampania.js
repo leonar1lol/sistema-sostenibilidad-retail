@@ -1,5 +1,4 @@
-import crypto from 'crypto';
-import { consultarBaseDatos } from '../configuracion/baseDatos.js';
+import { consultarBaseDatos, ejecutarTransaccion } from '../configuracion/baseDatos.js';
 import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 import { enviarRecordatorioEvaluacion } from '../servicios/servicioCorreo.js';
 
@@ -8,11 +7,11 @@ export const listarCampanias = async (peticion, respuesta) => {
     const resultado = await consultarBaseDatos(`
       SELECT c.id_campania AS "idCampania", c.nombre, c.periodo, c.estado, c.creado_en AS "creadoEn",
              COUNT(DISTINCT e.id_proveedor) AS "totalProveedores",
-             COUNT(DISTINCT p.id_unidad) AS "totalUnidades",
+             COUNT(DISTINCT pun.id_unidad) AS "totalUnidades",
              COUNT(*) FILTER (WHERE e.estado = 'Finalizado') AS "totalFinalizadas"
       FROM campania c
       LEFT JOIN evaluacion e ON e.id_campania = c.id_campania
-      LEFT JOIN proveedor p ON p.id_proveedor = e.id_proveedor
+      LEFT JOIN proveedor_unidad_negocio pun ON pun.id_proveedor = e.id_proveedor
       GROUP BY c.id_campania
       ORDER BY c.id_campania DESC
     `);
@@ -40,6 +39,10 @@ export const crearCampania = async (peticion, respuesta) => {
   }
 };
 
+// Intercorp Retail lanza una sola campaña al año y su recolección dura ~6 meses:
+// nunca conviven dos campañas publicadas. Al publicar una, cualquier otra que
+// estuviera publicada pasa automáticamente a Cerrada, para que nunca haya
+// ambigüedad sobre a cuál se asocian los proveedores que se autoregistran.
 export const cambiarEstadoCampania = async (peticion, respuesta) => {
   const { id } = peticion.params;
   const { estado } = peticion.body;
@@ -49,17 +52,59 @@ export const cambiarEstadoCampania = async (peticion, respuesta) => {
   }
 
   try {
+    const campania = await ejecutarTransaccion(async (cliente) => {
+      if (estado === 'Publicada') {
+        await cliente.query(
+          `UPDATE campania SET estado = 'Cerrada' WHERE estado = 'Publicada' AND id_campania != $1`,
+          [id]
+        );
+      }
+      const resultado = await cliente.query(
+        `UPDATE campania SET estado = $1 WHERE id_campania = $2 RETURNING id_campania AS "idCampania", nombre, estado`,
+        [estado, id]
+      );
+      return resultado.rows[0];
+    });
+
+    if (!campania) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Campaña no encontrada.' });
+    }
+    await registrarAuditoria({
+      idUsuario: peticion.usuario.idUsuario,
+      accion: estado === 'Publicada'
+        ? `Publicó la campaña ${campania.nombre} (cerró cualquier otra campaña publicada)`
+        : `Cambió la campaña ${campania.nombre} a estado ${estado}`
+    });
+    return respuesta.status(200).json({ exito: true, campania });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al cambiar el estado de la campaña.' });
+  }
+};
+
+// Solo se permite eliminar campañas sin evaluaciones asociadas (p. ej. campañas
+// de prueba creadas por error). Una campaña con datos reales debe cerrarse, no
+// borrarse, para no perder el historial de evaluaciones.
+export const eliminarCampania = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  try {
+    const conEvaluaciones = await consultarBaseDatos('SELECT 1 FROM evaluacion WHERE id_campania = $1 LIMIT 1', [id]);
+    if (conEvaluaciones.rows.length > 0) {
+      return respuesta.status(409).json({
+        exito: false,
+        mensaje: 'Esta campaña ya tiene evaluaciones asociadas y no puede eliminarse. Ciérrela en su lugar para conservar el historial.'
+      });
+    }
     const resultado = await consultarBaseDatos(
-      `UPDATE campania SET estado = $1 WHERE id_campania = $2 RETURNING id_campania AS "idCampania", nombre, estado`,
-      [estado, id]
+      'DELETE FROM campania WHERE id_campania = $1 RETURNING id_campania AS "idCampania", nombre',
+      [id]
     );
     if (!resultado.rows[0]) {
       return respuesta.status(404).json({ exito: false, mensaje: 'Campaña no encontrada.' });
     }
-    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Cambió la campaña #${id} a estado ${estado}` });
-    return respuesta.status(200).json({ exito: true, campania: resultado.rows[0] });
+    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Eliminó la campaña ${resultado.rows[0].nombre}` });
+    return respuesta.status(200).json({ exito: true });
   } catch (error) {
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al cambiar el estado de la campaña.' });
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al eliminar la campaña.' });
   }
 };
 
@@ -69,12 +114,18 @@ export const listarEvaluacionesDeCampania = async (peticion, respuesta) => {
     const esCorporativo = !peticion.usuario.idUnidad;
     const resultado = await consultarBaseDatos(
       `SELECT ev.id_evaluacion AS "idEvaluacion", ev.token, ev.estado, ev.fecha_envio AS "fechaEnvio", ev.puntaje_total AS "puntajeTotal",
-              p.id_proveedor AS "idProveedor", p.razon_social AS "razonSocial", p.correo, p.id_unidad AS "idUnidad",
-              un.nombre AS unidad
+              p.id_proveedor AS "idProveedor", p.razon_social AS "razonSocial", p.correo,
+              COALESCE(uds.unidades, 'Sin asignar') AS unidad
        FROM evaluacion ev
        JOIN proveedor p ON p.id_proveedor = ev.id_proveedor
-       LEFT JOIN unidad_negocio un ON un.id_unidad = p.id_unidad
-       WHERE ev.id_campania = $1 AND ($2::boolean OR p.id_unidad = $3)
+       LEFT JOIN LATERAL (
+         SELECT string_agg(un.nombre, ', ' ORDER BY un.nombre) AS unidades
+         FROM proveedor_unidad_negocio pun JOIN unidad_negocio un ON un.id_unidad = pun.id_unidad
+         WHERE pun.id_proveedor = p.id_proveedor
+       ) uds ON true
+       WHERE ev.id_campania = $1 AND ($2::boolean OR EXISTS (
+         SELECT 1 FROM proveedor_unidad_negocio pun2 WHERE pun2.id_proveedor = p.id_proveedor AND pun2.id_unidad = $3
+       ))
        ORDER BY ev.id_evaluacion ASC`,
       [id, esCorporativo, peticion.usuario.idUnidad]
     );
@@ -84,62 +135,23 @@ export const listarEvaluacionesDeCampania = async (peticion, respuesta) => {
   }
 };
 
-export const asignarEvaluacion = async (peticion, respuesta) => {
-  const { id } = peticion.params;
-  const { idProveedor } = peticion.body;
-
-  if (!idProveedor) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'idProveedor es obligatorio.' });
-  }
-
-  try {
-    const proveedor = await consultarBaseDatos(
-      'SELECT id_proveedor, razon_social, correo, id_unidad FROM proveedor WHERE id_proveedor = $1',
-      [idProveedor]
-    );
-    if (!proveedor.rows[0]) {
-      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado.' });
-    }
-    if (peticion.usuario.idUnidad && proveedor.rows[0].id_unidad !== peticion.usuario.idUnidad) {
-      return respuesta.status(403).json({ exito: false, mensaje: 'No tiene permiso para asignar evaluaciones fuera de su unidad de negocio.' });
-    }
-
-    const tokenNuevo = crypto.randomBytes(24).toString('hex');
-    const resultado = await consultarBaseDatos(
-      `INSERT INTO evaluacion (id_campania, id_proveedor, token, estado)
-       VALUES ($1, $2, $3, 'Pendiente')
-       ON CONFLICT (id_campania, id_proveedor) DO UPDATE SET id_campania = EXCLUDED.id_campania
-       RETURNING id_evaluacion AS "idEvaluacion", token, estado`,
-      [id, idProveedor, tokenNuevo]
-    );
-
-    await registrarAuditoria({
-      idUsuario: peticion.usuario.idUsuario,
-      idEvaluacion: resultado.rows[0].idEvaluacion,
-      accion: `Asignó la evaluación de la campaña #${id} al proveedor ${proveedor.rows[0].razon_social}`
-    });
-
-    return respuesta.status(201).json({
-      exito: true,
-      evaluacion: resultado.rows[0],
-      enlace: `${process.env.URL_BASE_APP}/?token=${resultado.rows[0].token}`
-    });
-  } catch (error) {
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al asignar la evaluación.' });
-  }
-};
-
 export const enviarRecordatorio = async (peticion, respuesta) => {
   const { idEvaluacion } = peticion.params;
+  const esCorporativo = !peticion.usuario.idUnidad;
   try {
     const resultado = await consultarBaseDatos(
-      `SELECT ev.id_evaluacion AS "idEvaluacion", ev.token, p.razon_social AS "razonSocial", p.correo
+      `SELECT ev.id_evaluacion AS "idEvaluacion", ev.token, ev.estado, p.razon_social AS "razonSocial", p.correo
        FROM evaluacion ev JOIN proveedor p ON p.id_proveedor = ev.id_proveedor
-       WHERE ev.id_evaluacion = $1`,
-      [idEvaluacion]
+       WHERE ev.id_evaluacion = $1 AND ($2::boolean OR EXISTS (
+         SELECT 1 FROM proveedor_unidad_negocio pun WHERE pun.id_proveedor = p.id_proveedor AND pun.id_unidad = $3
+       ))`,
+      [idEvaluacion, esCorporativo, peticion.usuario.idUnidad]
     );
     if (!resultado.rows[0]) {
-      return respuesta.status(404).json({ exito: false, mensaje: 'Evaluación no encontrada.' });
+      return respuesta.status(404).json({ exito: false, mensaje: 'Evaluación no encontrada o fuera de su unidad de negocio.' });
+    }
+    if (resultado.rows[0].estado === 'Finalizado') {
+      return respuesta.status(400).json({ exito: false, mensaje: 'Este proveedor ya finalizó su evaluación; no corresponde enviarle un recordatorio.' });
     }
 
     const { token, razonSocial, correo } = resultado.rows[0];

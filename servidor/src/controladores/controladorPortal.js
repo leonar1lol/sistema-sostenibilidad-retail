@@ -24,13 +24,22 @@ export const solicitarAcceso = async (peticion, respuesta) => {
     [correo.toLowerCase(), valor, expiracion]
   );
 
-  const enviadoPorCorreo = await enviarCodigoAccesoOtp(correo, valor);
+  // Modo de prueba: omite el envío real por Brevo (no consume la cuota gratuita)
+  // y devuelve el mismo código generado como "código de demostración", tal como
+  // ya hacíamos cuando el servicio de correo no estaba configurado. El código
+  // sigue siendo real y aleatorio — solo cambia si se envía o no por correo.
+  // Se activa con OTP_MODO_PRUEBA=true en el entorno; quitar esa variable
+  // restaura el envío real para producción/demo final.
+  const modoPrueba = process.env.OTP_MODO_PRUEBA === 'true';
+  const enviadoPorCorreo = modoPrueba ? false : await enviarCodigoAccesoOtp(correo, valor);
 
   const respuestaJson = enviadoPorCorreo
     ? { exito: true, mensaje: 'Código enviado. Revise su bandeja de entrada.' }
     : {
         exito: true,
-        mensaje: 'Servicio de correo aún no configurado: use el código de demostración provisto.',
+        mensaje: modoPrueba
+          ? 'Modo de prueba activo: no se envió correo, use el código de demostración provisto.'
+          : 'Servicio de correo aún no configurado: use el código de demostración provisto.',
         codigoDemostracion: valor
       };
   return respuesta.status(200).json(respuestaJson);
@@ -86,37 +95,86 @@ export const verificarAcceso = async (peticion, respuesta) => {
   }
 };
 
+// El corporativo ya mantiene una base de proveedores (críticos y no críticos)
+// con su RUC, unidades e industria. Al ingresar el RUC en el formulario, se
+// autocompletan esos datos para que el evaluado solo corrija lo que cambió
+// en vez de volver a tipear todo — así se evita registrar duplicados.
+// No se devuelven datos de la persona de contacto (nombre/celular/DNI): esa
+// persona puede ser distinta en cada ciclo de evaluación y es información
+// personal que no corresponde autocompletar a partir del RUC de la empresa.
+export const buscarProveedorPorRuc = async (peticion, respuesta) => {
+  const { ruc } = peticion.params;
+  if (!ruc || !/^\d{8,11}$/.test(ruc)) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'RUC inválido.' });
+  }
+
+  try {
+    const resultado = await consultarBaseDatos(
+      `SELECT p.razon_social AS "razonSocial", p.representante, p.id_industria AS "idIndustria",
+              p.tipo, p.pais, p.tamano_empresa AS "tamanoEmpresa",
+              COALESCE(array_agg(pun.id_unidad) FILTER (WHERE pun.id_unidad IS NOT NULL), '{}') AS "idsUnidad"
+       FROM proveedor p
+       LEFT JOIN proveedor_unidad_negocio pun ON pun.id_proveedor = p.id_proveedor
+       WHERE p.ruc = $1 AND p.activo = TRUE
+       GROUP BY p.id_proveedor`,
+      [ruc]
+    );
+    return respuesta.status(200).json({ exito: true, proveedor: resultado.rows[0] || null });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al buscar el proveedor por RUC.' });
+  }
+};
+
 export const registrarProveedor = async (peticion, respuesta) => {
-  const { ruc, razonSocial, representante, idIndustria, tipo, idCampania, idUnidad } = peticion.body;
+  const {
+    ruc, razonSocial, representante, idIndustria, tipo, idCampania, idsUnidad, pais, tamanoEmpresa,
+    nombreContacto, celularContacto, dniContacto, cargoContacto
+  } = peticion.body;
   const { correo, idProveedor: idProveedorSesion } = peticion.sesionProveedor;
 
   if (!ruc || !razonSocial || !idIndustria) {
     return respuesta.status(400).json({ exito: false, mensaje: 'RUC, razón social e industria son obligatorios.' });
+  }
+  if (!nombreContacto || !cargoContacto) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'El nombre y cargo de la persona que realiza la evaluación son obligatorios.' });
+  }
+  if (!Array.isArray(idsUnidad) || idsUnidad.length === 0) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Debe seleccionar al menos una unidad de negocio a la que brinda servicios.' });
   }
 
   try {
     const resultado = await ejecutarTransaccion(async (cliente) => {
       let idProveedor = idProveedorSesion;
 
-      const existentePorRuc = await cliente.query('SELECT id_proveedor, id_unidad FROM proveedor WHERE ruc = $1', [ruc]);
+      const existentePorRuc = await cliente.query('SELECT id_proveedor FROM proveedor WHERE ruc = $1', [ruc]);
 
       if (existentePorRuc.rows.length > 0) {
         idProveedor = existentePorRuc.rows[0].id_proveedor;
         await cliente.query(
-          `UPDATE proveedor SET representante = $1, correo = $2, id_industria = $3, tipo = COALESCE($4, tipo)
-           WHERE id_proveedor = $5`,
-          [representante || null, correo, idIndustria, tipo === 'No retail' ? 'No retail' : tipo === 'Retail' ? 'Retail' : null, idProveedor]
+          `UPDATE proveedor SET razon_social = $1, representante = $2, correo = $3, id_industria = $4, tipo = COALESCE($5, tipo),
+                  pais = COALESCE($6, pais), tamano_empresa = COALESCE($7, tamano_empresa),
+                  nombre_contacto = $8, celular_contacto = $9, dni_contacto = $10, cargo_contacto = $11
+           WHERE id_proveedor = $12`,
+          [razonSocial, representante || null, correo, idIndustria, tipo === 'No retail' ? 'No retail' : tipo === 'Retail' ? 'Retail' : null,
+            pais || null, tamanoEmpresa || null, nombreContacto, celularContacto || null, dniContacto || null, cargoContacto, idProveedor]
         );
       } else {
-        if (!idUnidad) {
-          throw Object.assign(new Error('Falta la unidad de negocio de origen del enlace.'), { codigoHttp: 400 });
-        }
         const nuevo = await cliente.query(
-          `INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_unidad, id_industria)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_proveedor`,
-          [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idUnidad, idIndustria]
+          `INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_industria,
+                                   pais, tamano_empresa, nombre_contacto, celular_contacto, dni_contacto, cargo_contacto)
+           VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'Perú'), $8, $9, $10, $11, $12) RETURNING id_proveedor`,
+          [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idIndustria,
+            pais || null, tamanoEmpresa || null, nombreContacto, celularContacto || null, dniContacto || null, cargoContacto]
         );
         idProveedor = nuevo.rows[0].id_proveedor;
+      }
+
+      await cliente.query('DELETE FROM proveedor_unidad_negocio WHERE id_proveedor = $1', [idProveedor]);
+      for (const idUnidad of idsUnidad) {
+        await cliente.query(
+          `INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [idProveedor, idUnidad]
+        );
       }
 
       let idCampaniaResuelta = idCampania;
@@ -168,8 +226,14 @@ export const registrarProveedor = async (peticion, respuesta) => {
 const cargarContextoCuestionario = async (idEvaluacion) => {
   const evaluacion = await consultarBaseDatos(
     `SELECT ev.id_evaluacion AS "idEvaluacion", ev.estado, ev.puntaje_total AS "puntajeTotal", ev.id_proveedor AS "idProveedor",
-            p.id_industria AS "idIndustria", p.razon_social AS "razonSocial", p.ruc, p.representante, p.correo
-     FROM evaluacion ev JOIN proveedor p ON p.id_proveedor = ev.id_proveedor
+            p.id_industria AS "idIndustria", p.razon_social AS "razonSocial", p.ruc, p.representante, p.correo,
+            EXISTS (
+              SELECT 1 FROM proveedor_unidad_negocio pun
+              JOIN unidad_negocio u ON u.id_unidad = pun.id_unidad
+              WHERE pun.id_proveedor = p.id_proveedor AND u.requiere_documento = TRUE
+            ) AS "requiereDocumento"
+     FROM evaluacion ev
+     JOIN proveedor p ON p.id_proveedor = ev.id_proveedor
      WHERE ev.id_evaluacion = $1`,
     [idEvaluacion]
   );
@@ -182,7 +246,7 @@ const cargarContextoCuestionario = async (idEvaluacion) => {
      FROM item i
      JOIN item_industria ii ON ii.id_item = i.id_item
      JOIN dimension d ON d.id_dimension = i.id_dimension
-     WHERE ii.id_industria = $1
+     WHERE ii.id_industria = $1 AND i.activo = TRUE
      ORDER BY d.id_dimension ASC, i.id_item ASC`,
     [contexto.idIndustria]
   );
@@ -198,9 +262,13 @@ const cargarContextoCuestionario = async (idEvaluacion) => {
 
   const reglas = idsItems.length
     ? await consultarBaseDatos(
-        `SELECT id_regla AS "idRegla", id_item_origen AS "idItemOrigen", id_alternativa_disparadora AS "idAlternativaDisparadora",
-                accion, id_item_destino AS "idItemDestino"
-         FROM regla_condicional WHERE id_item_destino = ANY($1::int[])`,
+        `SELECT rc.id_regla AS "idRegla", rc.id_item_origen AS "idItemOrigen", rc.id_alternativa_disparadora AS "idAlternativaDisparadora",
+                rc.accion, rc.id_item_destino AS "idItemDestino",
+                io.enunciado AS "enunciadoItemOrigen", ad.texto AS "textoAlternativaDisparadora"
+         FROM regla_condicional rc
+         JOIN item io ON io.id_item = rc.id_item_origen
+         JOIN alternativa ad ON ad.id_alternativa = rc.id_alternativa_disparadora
+         WHERE rc.id_item_destino = ANY($1::int[])`,
         [idsItems]
       )
     : { rows: [] };
@@ -314,8 +382,22 @@ export const finalizarEvaluacion = async (peticion, respuesta) => {
       return respuesta.status(400).json({
         exito: false,
         mensaje: 'Faltan ítems por responder antes de poder finalizar la evaluación.',
-        itemsFaltantes: itemsSinResponder.map((i) => i.codigo)
+        itemsFaltantes: itemsSinResponder.map((i) => i.enunciado)
       });
+    }
+
+    if (datos.contexto.requiereDocumento) {
+      const evidenciaAdjunta = await consultarBaseDatos(
+        `SELECT 1 FROM evidencia e JOIN respuesta r ON r.id_respuesta = e.id_respuesta
+         WHERE r.id_evaluacion = $1 LIMIT 1`,
+        [idEvaluacion]
+      );
+      if (evidenciaAdjunta.rows.length === 0) {
+        return respuesta.status(400).json({
+          exito: false,
+          mensaje: 'Su unidad de negocio exige adjuntar al menos un documento de sustento antes de finalizar la evaluación.'
+        });
+      }
     }
 
     const itemsRespondidos = itemsAplicablesVisibles.map((item) => {
@@ -349,11 +431,15 @@ export const finalizarEvaluacion = async (peticion, respuesta) => {
       }
     });
 
+    const proveedorInfo = await consultarBaseDatos('SELECT tamano_empresa AS "tamanoEmpresa" FROM proveedor WHERE id_proveedor = $1', [datos.contexto.idProveedor]);
+    const tamanoEmpresa = proveedorInfo.rows[0]?.tamanoEmpresa || null;
+
     let recomendaciones = [];
     for (const dimension of puntajesPorDimension) {
       const filas = await consultarBaseDatos(
-        'SELECT id_recomendacion AS "idRecomendacion", texto, umbral FROM recomendacion WHERE id_dimension = $1 AND umbral > $2',
-        [dimension.idDimension, dimension.puntaje]
+        `SELECT id_recomendacion AS "idRecomendacion", texto, umbral FROM recomendacion
+         WHERE id_dimension = $1 AND umbral > $2 AND (tamano_empresa IS NULL OR tamano_empresa = $3)`,
+        [dimension.idDimension, dimension.puntaje, tamanoEmpresa]
       );
       recomendaciones.push(...filas.rows.map((r) => ({ ...r, dimension: dimension.nombre })));
     }

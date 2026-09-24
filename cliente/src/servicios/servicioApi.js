@@ -1,5 +1,11 @@
 const URL_BASE_API = import.meta.env.VITE_API_BASE_URL || 'https://plataforma-sostenibilidad-api-42337725028.us-east1.run.app/api';
 
+function cerrarSesionCorporativaPorTokenInvalido() {
+  localStorage.removeItem('sesionCorporativa');
+  localStorage.removeItem('tokenSesionCorporativa');
+  window.location.reload();
+}
+
 async function peticionAutenticada(ruta, opciones = {}) {
   const token = localStorage.getItem('tokenSesionCorporativa');
   const respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
@@ -10,6 +16,10 @@ async function peticionAutenticada(ruta, opciones = {}) {
       ...opciones.headers
     }
   });
+  if (respuesta.status === 401) {
+    cerrarSesionCorporativaPorTokenInvalido();
+    throw new Error('Su sesión expiró. Vuelva a iniciar sesión.');
+  }
   const datos = await respuesta.json();
   if (!respuesta.ok || !datos.exito) {
     throw new Error(datos.mensaje || 'Ocurrió un error al comunicarse con el servidor.');
@@ -27,6 +37,11 @@ async function peticionPortal(ruta, opciones = {}) {
       ...opciones.headers
     }
   });
+  if (respuesta.status === 401 && token) {
+    localStorage.removeItem('tokenSesionProveedor');
+    window.location.reload();
+    throw new Error('Su sesión expiró. Vuelva a ingresar su correo.');
+  }
   const datos = await respuesta.json();
   if (!respuesta.ok || !datos.exito) {
     const error = new Error(datos.mensaje || 'Ocurrió un error al comunicarse con el servidor.');
@@ -44,6 +59,11 @@ export async function verificarAccesoPortalApi(correo, valor) {
   const datos = await peticionPortal('/portal/verificar', { method: 'POST', body: JSON.stringify({ correo, valor }) });
   localStorage.setItem('tokenSesionProveedor', datos.token);
   return datos;
+}
+
+export async function buscarProveedorPorRucApi(ruc) {
+  const datos = await peticionPortal(`/portal/proveedor-por-ruc/${ruc}`);
+  return datos.proveedor;
 }
 
 export async function registrarProveedorPortalApi(datosRegistro) {
@@ -158,8 +178,8 @@ export async function actualizarPermisoDeRolApi(idRol, idPermiso, asignado) {
   });
 }
 
-export async function listarUnidadesApi() {
-  const datos = await peticionAutenticada('/configuracion/unidades');
+export async function listarUnidadesApi(incluirInactivos = false) {
+  const datos = await peticionAutenticada(`/configuracion/unidades${incluirInactivos ? '?incluirInactivos=true' : ''}`);
   return datos.unidades;
 }
 
@@ -173,8 +193,13 @@ export async function editarUnidadApi(idUnidad, datosUnidad) {
   return datos.unidad;
 }
 
-export async function listarIndustriasApi() {
-  const datos = await peticionAutenticada('/configuracion/industrias');
+export async function cambiarEstadoUnidadApi(idUnidad, activo) {
+  const datos = await peticionAutenticada(`/configuracion/unidades/${idUnidad}/estado`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+  return datos.unidad;
+}
+
+export async function listarIndustriasApi(incluirInactivos = false) {
+  const datos = await peticionAutenticada(`/configuracion/industrias${incluirInactivos ? '?incluirInactivos=true' : ''}`);
   return datos.industrias;
 }
 
@@ -188,9 +213,41 @@ export async function editarIndustriaApi(idIndustria, datosIndustria) {
   return datos.industria;
 }
 
-export async function listarDimensionesApi() {
-  const datos = await peticionAutenticada('/configuracion/dimensiones');
+export async function cambiarEstadoIndustriaApi(idIndustria, activo) {
+  const datos = await peticionAutenticada(`/configuracion/industrias/${idIndustria}/estado`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+  return datos.industria;
+}
+
+export async function obtenerConfiguracionCriticidadApi() {
+  return peticionAutenticada('/configuracion/criticidad');
+}
+
+export async function actualizarConfiguracionPesosApi(pesos) {
+  return peticionAutenticada('/configuracion/criticidad/pesos', { method: 'PUT', body: JSON.stringify(pesos) });
+}
+
+export async function actualizarConfiguracionCriticidadPorTipoApi(tipoIndustria, datos) {
+  return peticionAutenticada(`/configuracion/criticidad/${encodeURIComponent(tipoIndustria)}`, { method: 'PUT', body: JSON.stringify(datos) });
+}
+
+export async function listarDimensionesApi(incluirInactivos = false) {
+  const datos = await peticionAutenticada(`/configuracion/dimensiones${incluirInactivos ? '?incluirInactivos=true' : ''}`);
   return datos.dimensiones;
+}
+
+export async function crearDimensionApi(datosDimension) {
+  const datos = await peticionAutenticada('/configuracion/dimensiones', { method: 'POST', body: JSON.stringify(datosDimension) });
+  return datos.dimension;
+}
+
+export async function editarDimensionApi(idDimension, datosDimension) {
+  const datos = await peticionAutenticada(`/configuracion/dimensiones/${idDimension}`, { method: 'PUT', body: JSON.stringify(datosDimension) });
+  return datos.dimension;
+}
+
+export async function cambiarEstadoDimensionApi(idDimension, activo) {
+  const datos = await peticionAutenticada(`/configuracion/dimensiones/${idDimension}/estado`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+  return datos.dimension;
 }
 
 export async function actualizarPesosDimensionesApi(pesos) {
@@ -198,9 +255,14 @@ export async function actualizarPesosDimensionesApi(pesos) {
   return datos.dimensiones;
 }
 
-export async function listarItemsBancoApi() {
-  const datos = await peticionAutenticada('/banco/items');
+export async function listarItemsBancoApi(incluirInactivos = false) {
+  const datos = await peticionAutenticada(`/banco/items${incluirInactivos ? '?incluirInactivos=true' : ''}`);
   return datos.items;
+}
+
+export async function cambiarEstadoItemBancoApi(idItem, activo) {
+  const datos = await peticionAutenticada(`/banco/items/${idItem}/estado`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+  return datos.item;
 }
 
 export async function crearItemBancoApi(datosItem) {
@@ -256,17 +318,27 @@ export async function listarEvaluacionesDeCampaniaApi(idCampania) {
   return datos.evaluaciones;
 }
 
-export async function asignarEvaluacionApi(idCampania, idProveedor) {
-  return peticionAutenticada(`/campanias/${idCampania}/evaluaciones`, { method: 'POST', body: JSON.stringify({ idProveedor }) });
+export async function eliminarCampaniaApi(idCampania) {
+  return peticionAutenticada(`/campanias/${idCampania}`, { method: 'DELETE' });
 }
 
 export async function enviarRecordatorioApi(idEvaluacion) {
   return peticionAutenticada(`/campanias/evaluaciones/${idEvaluacion}/recordatorio`, { method: 'POST' });
 }
 
-export async function listarProveedoresAdminApi() {
-  const datos = await peticionAutenticada('/proveedores');
+export async function listarProveedoresAdminApi(incluirInactivos = false) {
+  const datos = await peticionAutenticada(`/proveedores${incluirInactivos ? '?incluirInactivos=true' : ''}`);
   return datos.proveedores;
+}
+
+export async function cambiarEstadoProveedorApi(idProveedor, activo) {
+  const datos = await peticionAutenticada(`/proveedores/${idProveedor}/estado`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+  return datos.proveedor;
+}
+
+export async function actualizarClasificacionRiesgoApi(idProveedor, datos) {
+  const respuesta = await peticionAutenticada(`/proveedores/${idProveedor}/riesgo`, { method: 'PATCH', body: JSON.stringify(datos) });
+  return respuesta.proveedor;
 }
 
 export async function crearProveedorAdminApi(datosProveedor) {
@@ -274,12 +346,12 @@ export async function crearProveedorAdminApi(datosProveedor) {
   return datos.proveedor;
 }
 
-export async function alternarProveedorCriticoApi(idProveedor, esCritico) {
+export async function alternarCriticidadUnidadApi(idProveedor, idUnidad, esCritico) {
   const datos = await peticionAutenticada(`/proveedores/${idProveedor}/critico`, {
     method: 'PATCH',
-    body: JSON.stringify({ esCritico })
+    body: JSON.stringify({ idUnidad, esCritico })
   });
-  return datos.proveedor;
+  return datos.criticidad;
 }
 
 export async function listarAuditoriaApi() {

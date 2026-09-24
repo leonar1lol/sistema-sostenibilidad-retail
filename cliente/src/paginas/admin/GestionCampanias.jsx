@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, CheckCircle2, AlertCircle, X, Copy, Send, ChevronRight, Megaphone } from 'lucide-react';
+import { Plus, CheckCircle2, AlertCircle, X, Copy, Send, ChevronRight, Megaphone, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import {
   listarCampaniasApi,
   crearCampaniaApi,
   cambiarEstadoCampaniaApi,
+  eliminarCampaniaApi,
   listarEvaluacionesDeCampaniaApi,
-  asignarEvaluacionApi,
-  enviarRecordatorioApi,
-  listarUnidadesApi,
-  listarProveedoresAdminApi
+  enviarRecordatorioApi
 } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 const INSIGNIA_ESTADO = {
   Borrador: 'insignia-neutra',
@@ -19,30 +18,21 @@ const INSIGNIA_ESTADO = {
 
 export default function GestionCampanias({ alRegistrarAuditoria }) {
   const [campanias, setCampanias] = useState([]);
-  const [unidades, setUnidades] = useState([]);
-  const [proveedores, setProveedores] = useState([]);
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [campaniaSeleccionada, setCampaniaSeleccionada] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [mostrarModalNueva, setMostrarModalNueva] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoPeriodo, setNuevoPeriodo] = useState('');
-  const [idProveedorAsignar, setIdProveedorAsignar] = useState('');
+  const [campaniaAEliminar, setCampaniaAEliminar] = useState(null);
   const [mensajeExito, setMensajeExito] = useState('');
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
-      const [campaniasRemotas, unidadesRemotas, proveedoresRemotos] = await Promise.all([
-        listarCampaniasApi(),
-        listarUnidadesApi(),
-        listarProveedoresAdminApi()
-      ]);
+      const campaniasRemotas = await listarCampaniasApi();
       setCampanias(campaniasRemotas);
-      setUnidades(unidadesRemotas);
-      setProveedores(proveedoresRemotos);
-      setIdProveedorAsignar((actual) => actual || String(proveedoresRemotos[0]?.idProveedor ?? ''));
     } catch (error) {
       setMensajeError(error.message);
     } finally {
@@ -108,18 +98,22 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
     }
   };
 
-  const asignarEvaluacion = async () => {
-    if (!campaniaSeleccionada || !idProveedorAsignar) return;
+  const confirmarEliminarCampania = async () => {
+    if (!campaniaAEliminar) return;
     try {
-      const resultado = await asignarEvaluacionApi(campaniaSeleccionada.idCampania, Number(idProveedorAsignar));
-      await cargarEvaluaciones(campaniaSeleccionada);
-      await copiarEnlace(resultado.enlace);
-      if (alRegistrarAuditoria) {
-        alRegistrarAuditoria({ accion: 'Asignación de evaluación', modulo: 'Campañas', detalles: `Evaluación asignada en la campaña ${campaniaSeleccionada.nombre}` });
+      await eliminarCampaniaApi(campaniaAEliminar.idCampania);
+      if (campaniaSeleccionada?.idCampania === campaniaAEliminar.idCampania) {
+        setCampaniaSeleccionada(null);
       }
-      mostrarAviso('Evaluación asignada. Enlace copiado al portapapeles.');
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({ accion: 'Eliminación de campaña', modulo: 'Campañas', detalles: `Se eliminó la campaña ${campaniaAEliminar.nombre}` });
+      }
+      mostrarAviso('Campaña eliminada.');
+      setCampaniaAEliminar(null);
     } catch (error) {
       setMensajeError(error.message);
+      setCampaniaAEliminar(null);
     }
   };
 
@@ -161,7 +155,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             Campañas de Evaluación
           </h2>
           <p className="text-cuerpo-pequeno text-plataformaSecundario mt-0.5">
-            Creación de campañas, enlaces de acceso por unidad de negocio y recordatorios a proveedores.
+            Solo una campaña puede estar publicada a la vez: es la que reciben los proveedores que se autoregistran.
           </p>
         </div>
         <button onClick={() => setMostrarModalNueva(true)} className="boton-primario flex items-center gap-1.5">
@@ -169,6 +163,25 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
           <span>Nueva campaña</span>
         </button>
       </div>
+
+      {!cargando && (
+        campanias.some((c) => c.estado === 'Publicada') ? (
+          <div className="rounded-md-token bg-emerald-50 border border-emerald-200/60 p-4 flex items-center gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            <p className="text-cuerpo-pequeno text-emerald-800">
+              Campaña activa actualmente: <strong>{campanias.find((c) => c.estado === 'Publicada').nombre}</strong>{' '}
+              ({campanias.find((c) => c.estado === 'Publicada').periodo}). Los proveedores que se registren con el enlace público se asocian a esta campaña.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-md-token bg-amber-50 border border-amber-200/60 p-4 flex items-center gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+            <p className="text-cuerpo-pequeno text-amber-800">
+              No hay ninguna campaña publicada. Los proveedores no podrán autoregistrarse hasta que publique una.
+            </p>
+          </div>
+        )
+      )}
 
       {cargando ? (
         <div className="superficie-tarjeta rounded-lg-token p-10 text-center text-cuerpo-pequeno text-plataformaSecundario">
@@ -201,10 +214,19 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
                       <span className={INSIGNIA_ESTADO[c.estado]}>{c.estado}</span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button onClick={(e) => { e.stopPropagation(); cargarEvaluaciones(c); }} className="text-etiqueta text-plataformaAzul hover:underline inline-flex items-center gap-0.5 cursor-pointer">
-                        <span>Gestionar</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); cargarEvaluaciones(c); }} className="text-etiqueta text-plataformaAzul hover:underline inline-flex items-center gap-0.5 cursor-pointer">
+                          <span>Gestionar</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setCampaniaAEliminar(c); }}
+                          title="Eliminar campaña"
+                          className="p-1.5 rounded-full hover:bg-red-50 text-plataformaSecundario hover:text-red-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -245,34 +267,23 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             </div>
           </div>
 
-          <div>
-            <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">Enlaces de acceso por unidad de negocio</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {unidades.map((u) => {
-                const enlace = `${window.location.origin}/?campania=${campaniaSeleccionada.idCampania}&unidad=${u.idUnidad}`;
-                return (
-                  <div key={u.idUnidad} className="flex items-center gap-2 p-3 rounded-sm-token bg-black/[0.02] border border-black/[0.04]">
-                    <span className="text-etiqueta font-medium text-plataformaTexto w-32 shrink-0">{u.nombre}</span>
-                    <span className="text-subtexto font-mono text-plataformaSecundario truncate flex-1">{enlace}</span>
-                    <button onClick={() => copiarEnlace(enlace)} className="p-1.5 rounded-full hover:bg-black/[0.06] text-plataformaSecundario hover:text-plataformaAzul cursor-pointer shrink-0">
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {campaniaSeleccionada.estado !== 'Publicada' && (
+            <p className="text-subtexto text-plataformaSecundario -mt-4">
+              Al publicar esta campaña, cualquier otra campaña que esté publicada se cerrará automáticamente.
+            </p>
+          )}
 
           <div>
-            <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">Asignar evaluación a un proveedor conocido</h4>
-            <div className="flex items-center gap-2">
-              <select value={idProveedorAsignar} onChange={(e) => setIdProveedorAsignar(e.target.value)} className="campo-select flex-1">
-                {proveedores.map((p) => (
-                  <option key={p.idProveedor} value={p.idProveedor}>{p.razonSocial} — {p.ruc}</option>
-                ))}
-              </select>
-              <button onClick={asignarEvaluacion} className="boton-primario shrink-0">Asignar y copiar enlace</button>
+            <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">Enlace público de acceso</h4>
+            <div className="flex items-center gap-2 p-3 rounded-sm-token bg-black/[0.02] border border-black/[0.04]">
+              <span className="text-subtexto font-mono text-plataformaSecundario truncate flex-1">{window.location.origin}/</span>
+              <button onClick={() => copiarEnlace(`${window.location.origin}/`)} className="p-1.5 rounded-full hover:bg-black/[0.06] text-plataformaSecundario hover:text-plataformaAzul cursor-pointer shrink-0">
+                <Copy className="w-3.5 h-3.5" />
+              </button>
             </div>
+            <p className="text-subtexto text-plataformaSecundario mt-1.5">
+              Cualquier proveedor puede acceder con este enlace; declara él mismo su industria y las unidades de negocio a las que atiende en el formulario de registro.
+            </p>
           </div>
 
           <div>
@@ -300,9 +311,13 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
                         {ev.fechaEnvio ? new Date(ev.fechaEnvio).toLocaleString('es-PE') : 'Nunca'}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button onClick={() => enviarRecordatorio(ev)} title="Enviar recordatorio" className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaAzul transition-colors cursor-pointer">
-                          <Send className="w-4 h-4" />
-                        </button>
+                        {ev.estado === 'Finalizado' ? (
+                          <span className="text-subtexto text-plataformaSecundario">Ya finalizó</span>
+                        ) : (
+                          <button onClick={() => enviarRecordatorio(ev)} title="Enviar recordatorio" className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaAzul transition-colors cursor-pointer">
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -347,6 +362,28 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
               <button type="submit" className="boton-primario">Crear campaña</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {campaniaAEliminar && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <div className="contenido-modal max-w-sm w-full p-8">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 rounded-full bg-red-50 text-red-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-titulo-tarjeta">Eliminar campaña</h3>
+                <p className="text-cuerpo-pequeno text-plataformaSecundario mt-1">
+                  ¿Eliminar <strong>{campaniaAEliminar.nombre}</strong> ({campaniaAEliminar.periodo})? Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setCampaniaAEliminar(null)} className="boton-secundario">Cancelar</button>
+              <button type="button" onClick={confirmarEliminarCampania} className="boton-primario !bg-red-600 hover:!bg-red-700">Eliminar definitivamente</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

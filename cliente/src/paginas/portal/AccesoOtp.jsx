@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mail, ArrowRight, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
 import { solicitarAccesoPortalApi, verificarAccesoPortalApi } from '../../servicios/servicioApi.js';
+import { useMensajeTemporal } from '../../utilidades/useMensajeTemporal.js';
 
 export default function AccesoOtp({ alCompletarAcceso }) {
   const [fase, setFase] = useState('correo');
@@ -9,7 +10,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
   const [casillasOtp, setCasillasOtp] = useState(['', '', '', '', '', '']);
   const [segundosRestantes, setSegundosRestantes] = useState(600);
   const [codigoDemostracion, setCodigoDemostracion] = useState('');
-  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeError, setMensajeError] = useMensajeTemporal();
   const [cargando, setCargando] = useState(false);
   const referenciasCasillas = useRef([]);
 
@@ -100,8 +101,8 @@ export default function AccesoOtp({ alCompletarAcceso }) {
 
   if (fase === 'correo') {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8">
-        <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token">
+      <div className="flex items-start sm:items-center justify-center min-h-[calc(100vh-140px)] px-3 py-4 sm:px-4 sm:py-8">
+        <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-5 sm:p-8 shadow-sm-token">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-md-token bg-plataformaAzul/[0.08] text-plataformaAzul flex items-center justify-center mx-auto mb-4">
               <Mail className="w-6 h-6 stroke-[1.8]" />
@@ -155,8 +156,8 @@ export default function AccesoOtp({ alCompletarAcceso }) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8">
-      <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token">
+    <div className="flex items-start sm:items-center justify-center min-h-[calc(100vh-140px)] px-3 py-4 sm:px-4 sm:py-8">
+      <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-5 sm:p-8 shadow-sm-token">
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-md-token bg-plataformaAzul/[0.08] text-plataformaAzul flex items-center justify-center mx-auto mb-4">
             <ShieldCheck className="w-6 h-6 stroke-[1.8]" />
@@ -183,7 +184,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
               </span>
             </div>
 
-            <div className="flex justify-between gap-2" onPaste={alPegarTexto}>
+            <div className="flex justify-between gap-1.5 sm:gap-2" onPaste={alPegarTexto}>
               {casillasOtp.map((digito, indice) => (
                 <input
                   key={indice}
@@ -194,7 +195,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
                   value={digito}
                   onChange={(e) => alCambiarCasilla(indice, e.target.value)}
                   onKeyDown={(e) => alPresionarTecla(indice, e)}
-                  className="w-12 h-14 text-center text-xl font-semibold bg-black/[0.025] border border-black/[0.08] rounded-md-token focus:bg-white focus:border-plataformaAzul focus:shadow-[0_0_0_3px_rgba(0,113,227,0.12)] transition-all duration-180"
+                  className="flex-1 max-w-[48px] h-12 sm:h-14 text-center text-xl font-semibold bg-black/[0.025] border border-black/[0.08] rounded-md-token focus:bg-white focus:border-plataformaAzul focus:shadow-[0_0_0_3px_rgba(0,113,227,0.12)] transition-all duration-180"
                 />
               ))}
             </div>

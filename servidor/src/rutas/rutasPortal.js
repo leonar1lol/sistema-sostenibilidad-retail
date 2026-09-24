@@ -3,6 +3,7 @@ import { verificarSesionProveedor, requiereEvaluacionAsignada } from '../middlew
 import {
   solicitarAcceso,
   verificarAcceso,
+  buscarProveedorPorRuc,
   registrarProveedor,
   obtenerCuestionario,
   guardarRespuesta,
@@ -20,6 +21,7 @@ export const enrutadorPortal = Router();
 
 enrutadorPortal.post('/acceso', solicitarAcceso);
 enrutadorPortal.post('/verificar', verificarAcceso);
+enrutadorPortal.get('/proveedor-por-ruc/:ruc', verificarSesionProveedor, buscarProveedorPorRuc);
 enrutadorPortal.post('/registro', verificarSesionProveedor, registrarProveedor);
 
 enrutadorPortal.get('/cuestionario', verificarSesionProveedor, requiereEvaluacionAsignada, obtenerCuestionario);
