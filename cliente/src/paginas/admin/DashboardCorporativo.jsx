@@ -8,12 +8,13 @@ import {
   FileSpreadsheet,
   ChevronRight,
   Database,
-  Layers,
   BarChart3,
   Sliders,
   History,
   Shield,
-  Megaphone
+  Megaphone,
+  Building2,
+  ArrowUpRight
 } from 'lucide-react';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import GestionProveedores from './GestionProveedores.jsx';
@@ -25,12 +26,29 @@ import BitacoraAuditoria from './BitacoraAuditoria.jsx';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
 import { listarProveedoresAdminApi, listarUnidadesApi } from '../../servicios/servicioApi.js';
 
-export default function DashboardCorporativo() {
-  const [pestanaActiva, setPestanaActiva] = useState('resumen');
+export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCambiarPestana }) {
+  const [pestanaActiva, setPestanaActiva] = useState(pestanaInicial);
   const [proveedores, setProveedores] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [unidadSeleccionada, setUnidadSeleccionada] = useState('todas');
   const [soloCriticosActivo, setSoloCriticosActivo] = useState(false);
+
+  const [filtroDirectorioUnidad, setFiltroDirectorioUnidad] = useState('todas');
+  const [filtroDirectorioCriticos, setFiltroDirectorioCriticos] = useState(false);
+  const [filtroDirectorioEstado, setFiltroDirectorioEstado] = useState('todos');
+
+  useEffect(() => {
+    if (pestanaInicial) {
+      setPestanaActiva(pestanaInicial);
+    }
+  }, [pestanaInicial]);
+
+  const seleccionarPestana = (nuevaPestana) => {
+    setPestanaActiva(nuevaPestana);
+    if (alCambiarPestana) {
+      alCambiarPestana(nuevaPestana);
+    }
+  };
 
   useEffect(() => {
     async function sincronizarConBaseDatos() {
@@ -78,103 +96,175 @@ export default function DashboardCorporativo() {
     exportarProveedoresAExcel(proveedoresParaMetricas);
   };
 
+  const irADirectorioConFiltro = ({ unidad = 'todas', criticos = false, estado = 'todos' }) => {
+    setFiltroDirectorioUnidad(unidad);
+    setFiltroDirectorioCriticos(criticos);
+    setFiltroDirectorioEstado(estado);
+    seleccionarPestana('proveedores');
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-8 px-6">
-      <div className="mb-8">
-        <span className="text-etiqueta text-plataformaSecundario block mb-1">
-          Corporativo • Jefatura de Sostenibilidad Intercorp Retail
-        </span>
-        <h2 className="text-titulo-pagina">
-          Gestión Integral de Sostenibilidad de Proveedores
-        </h2>
-        <p className="text-cuerpo-pequeno text-plataformaSecundario mt-2">
-          Plataforma centralizada con cobertura completa de requerimientos funcionales (RF01 a RF16).
-        </p>
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+      <div className="p-4 sm:p-5 rounded-lg-token bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 rounded-md-token bg-white/10 text-white backdrop-blur-sm shrink-0">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold tracking-wide">
+              Panel Centralizado Corporativo — Grupo Intercorp Retail
+            </h3>
+            <p className="text-xs text-blue-200 mt-0.5">
+              Supervisión consolidada de sostenibilidad para las 7 unidades: Supermercados Peruanos, Promart, Oechsle, Real Plaza, Farmacias Peruanas, SIP y Sucursal China.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            Servicio Operativo
+          </span>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-etiqueta text-plataformaSecundario block mb-1">
+              Corporativo • Jefatura de Sostenibilidad Intercorp Retail
+            </span>
+            <h2 className="text-titulo-pagina text-plataformaTexto">
+              Gestión Integral de Sostenibilidad de Proveedores
+            </h2>
+          </div>
+          <span className="text-subtexto text-plataformaSecundario">
+            Cobertura completa: Requerimientos Funcionales RF01 a RF16
+          </span>
+        </div>
 
         <nav className="flex items-center gap-1 overflow-x-auto pb-1 mt-6 mb-8 border-b border-black/[0.06]">
           <button
-            onClick={() => setPestanaActiva('resumen')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('resumen')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'resumen'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
             <span>Resumen</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
+              RF10
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('proveedores')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => {
+              setFiltroDirectorioUnidad('todas');
+              setFiltroDirectorioCriticos(false);
+              setFiltroDirectorioEstado('todos');
+              seleccionarPestana('proveedores');
+            }}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'proveedores'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <Users className="w-4 h-4" />
             <span>Directorio ({proveedores.length})</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+              RF06/07
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('banco')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('banco')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'banco'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <Database className="w-4 h-4" />
             <span>Banco de Ítems</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+              RF04/05
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('campanias')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('campanias')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'campanias'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <Megaphone className="w-4 h-4" />
             <span>Campañas</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
+              RF12/21
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('usuarios')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('usuarios')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'usuarios'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <Shield className="w-4 h-4" />
             <span>Usuarios y Roles</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+              RF02/03
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('configuracion')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('configuracion')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'configuracion'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <Sliders className="w-4 h-4" />
             <span>Configuración</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-semibold">
+              RF09/11
+            </span>
           </button>
+
           <button
-            onClick={() => setPestanaActiva('auditoria')}
-            className={`px-4 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+            type="button"
+            onClick={() => seleccionarPestana('auditoria')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
               pestanaActiva === 'auditoria'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
                 : 'text-plataformaSecundario hover:text-plataformaTexto'
             }`}
           >
             <History className="w-4 h-4" />
             <span>Auditoría</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+              RF16/24
+            </span>
           </button>
         </nav>
       </div>
 
       {pestanaActiva === 'resumen' && (
         <div className="space-y-7">
-          <div className="flex items-center gap-3 py-3">
+          <div className="flex flex-wrap items-center gap-3 py-3">
             <Filter className="w-4 h-4 text-plataformaSecundario" />
             <select
               value={unidadSeleccionada}
@@ -192,6 +282,7 @@ export default function DashboardCorporativo() {
             </select>
 
             <button
+              type="button"
               onClick={() => setSoloCriticosActivo(!soloCriticosActivo)}
               className={`flex items-center gap-1.5 transition-all cursor-pointer ${
                 soloCriticosActivo
@@ -204,8 +295,9 @@ export default function DashboardCorporativo() {
             </button>
 
             <button
+              type="button"
               onClick={descargarReporteExcel}
-              className="boton-secundario flex items-center gap-1.5"
+              className="boton-secundario flex items-center gap-1.5 cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Descargar Excel</span>
@@ -213,10 +305,16 @@ export default function DashboardCorporativo() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-            <div className="superficie-tarjeta rounded-lg-token p-6 relative">
-              <span className="text-etiqueta text-plataformaSecundario block">
-                Padrón Activo
-              </span>
+            <div
+              onClick={() => irADirectorioConFiltro({ unidad: unidadSeleccionada, criticos: soloCriticosActivo, estado: 'todos' })}
+              className="superficie-tarjeta rounded-lg-token p-6 relative cursor-pointer hover:border-plataformaAzul/40 hover:shadow-xs-token transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-etiqueta text-plataformaSecundario block group-hover:text-plataformaAzul transition-colors">
+                  Padrón Activo
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-plataformaSecundario opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <div className="text-[32px] font-semibold tracking-tight mt-2 text-plataformaTexto">
                 {totalProveedores}
               </div>
@@ -228,10 +326,16 @@ export default function DashboardCorporativo() {
               </span>
             </div>
 
-            <div className="superficie-tarjeta rounded-lg-token p-6 relative">
-              <span className="text-etiqueta text-plataformaSecundario block">
-                Críticos
-              </span>
+            <div
+              onClick={() => irADirectorioConFiltro({ unidad: unidadSeleccionada, criticos: true, estado: 'todos' })}
+              className="superficie-tarjeta rounded-lg-token p-6 relative cursor-pointer hover:border-amber-500/40 hover:shadow-xs-token transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-etiqueta text-plataformaSecundario block group-hover:text-amber-600 transition-colors">
+                  Críticos
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-plataformaSecundario opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <div className="text-[32px] font-semibold tracking-tight mt-2 text-amber-600">
                 {criticosTotales}
               </div>
@@ -243,10 +347,16 @@ export default function DashboardCorporativo() {
               </span>
             </div>
 
-            <div className="superficie-tarjeta rounded-lg-token p-6 relative">
-              <span className="text-etiqueta text-plataformaSecundario block">
-                Evaluados
-              </span>
+            <div
+              onClick={() => irADirectorioConFiltro({ unidad: unidadSeleccionada, criticos: soloCriticosActivo, estado: 'Finalizado' })}
+              className="superficie-tarjeta rounded-lg-token p-6 relative cursor-pointer hover:border-emerald-500/40 hover:shadow-xs-token transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-etiqueta text-plataformaSecundario block group-hover:text-emerald-600 transition-colors">
+                  Evaluados
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-plataformaSecundario opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <div className="text-[32px] font-semibold tracking-tight mt-2 text-emerald-600">
                 {encuestasCompletadas}
               </div>
@@ -330,10 +440,8 @@ export default function DashboardCorporativo() {
 
                   <div className="md:w-28 text-right">
                     <button
-                      onClick={() => {
-                        setUnidadSeleccionada(unidad.nombre);
-                        setPestanaActiva('proveedores');
-                      }}
+                      type="button"
+                      onClick={() => irADirectorioConFiltro({ unidad: unidad.nombre, criticos: false, estado: 'todos' })}
                       className="text-etiqueta text-plataformaAzul hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                     >
                       <span>Ver proveedores</span>
@@ -347,7 +455,13 @@ export default function DashboardCorporativo() {
         </div>
       )}
 
-      {pestanaActiva === 'proveedores' && <GestionProveedores />}
+      {pestanaActiva === 'proveedores' && (
+        <GestionProveedores
+          filtroUnidadInicial={filtroDirectorioUnidad}
+          filtroSoloCriticosInicial={filtroDirectorioCriticos}
+          filtroEstadoInicial={filtroDirectorioEstado}
+        />
+      )}
 
       {pestanaActiva === 'banco' && <BancoPreguntas />}
 

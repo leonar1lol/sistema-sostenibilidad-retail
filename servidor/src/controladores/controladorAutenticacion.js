@@ -36,7 +36,10 @@ export const iniciarSesion = async (peticion, respuesta) => {
       `SELECT p.codigo FROM rol_permiso rp JOIN permiso p ON p.id_permiso = rp.id_permiso WHERE rp.id_rol = $1`,
       [usuario.id_rol]
     );
-    const permisos = resultadoPermisos.rows.map((fila) => fila.codigo);
+    let permisos = resultadoPermisos.rows.map((fila) => fila.codigo);
+    if (usuario.rol === 'Administrador Corporativo' || Number(usuario.id_rol) === 1) {
+      permisos.push('*', 'ver_dashboard_corporativo', 'administrar_usuarios_roles', 'ver_auditoria');
+    }
 
     const token = jwt.sign(
       {

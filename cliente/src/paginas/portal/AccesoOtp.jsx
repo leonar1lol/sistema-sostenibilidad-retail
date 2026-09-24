@@ -100,9 +100,12 @@ export default function AccesoOtp({ alCompletarAcceso }) {
 
   if (fase === 'correo') {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8">
-        <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token">
-          <div className="text-center mb-8">
+      <div className="flex items-center justify-center min-h-[calc(100vh-220px)] px-4 py-8">
+        <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token relative">
+          <span className="absolute top-4 right-4 bg-black/[0.05] text-plataformaSecundario text-[10px] font-bold px-2 py-1 rounded-sm-token uppercase tracking-widest">
+            Paso 1 de 4
+          </span>
+          <div className="text-center mb-8 mt-2">
             <div className="w-12 h-12 rounded-md-token bg-plataformaAzul/[0.08] text-plataformaAzul flex items-center justify-center mx-auto mb-4">
               <Mail className="w-6 h-6 stroke-[1.8]" />
             </div>
@@ -118,7 +121,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
           <form onSubmit={solicitarCodigo} className="space-y-5">
             <div>
               <label className="text-etiqueta text-plataformaSecundario mb-2 block">
-                Correo del representante
+                Correo corporativo del representante
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
@@ -128,7 +131,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
                   onChange={(e) => setCorreo(e.target.value)}
                   required
                   className="campo-entrada campo-entrada-icono w-full"
-                  placeholder="ejemplo@proveedor.com.pe"
+                  placeholder="representante@proveedor.com.pe"
                 />
               </div>
             </div>
@@ -143,11 +146,15 @@ export default function AccesoOtp({ alCompletarAcceso }) {
             <button
               type="submit"
               disabled={cargando}
-              className="boton-primario w-full flex items-center justify-center gap-2"
+              className="boton-primario w-full flex items-center justify-center gap-2 py-3"
             >
-              <span>{cargando ? 'Enviando...' : 'Enviar código de acceso'}</span>
+              <span>{cargando ? 'Enviando código...' : 'Solicitar código de verificación'}</span>
               {!cargando && <ArrowRight className="w-4 h-4 stroke-[2]" />}
             </button>
+
+            <p className="text-[11px] text-center text-plataformaSecundario pt-2 leading-relaxed">
+              El código OTP será emitido conforme a la directiva de seguridad de accesos externos de Intercorp Retail.
+            </p>
           </form>
         </TarjetaBento>
       </div>
@@ -155,9 +162,12 @@ export default function AccesoOtp({ alCompletarAcceso }) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8">
-      <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token">
-        <div className="text-center mb-8">
+    <div className="flex items-center justify-center min-h-[calc(100vh-220px)] px-4 py-8">
+      <TarjetaBento clasePersonalizada="max-w-[440px] w-full p-8 shadow-sm-token relative">
+        <span className="absolute top-4 right-4 bg-black/[0.05] text-plataformaSecundario text-[10px] font-bold px-2 py-1 rounded-sm-token uppercase tracking-widest">
+          Paso 1 de 4
+        </span>
+        <div className="text-center mb-8 mt-2">
           <div className="w-12 h-12 rounded-md-token bg-plataformaAzul/[0.08] text-plataformaAzul flex items-center justify-center mx-auto mb-4">
             <ShieldCheck className="w-6 h-6 stroke-[1.8]" />
           </div>
@@ -166,7 +176,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
             Validación de identidad
           </h2>
           <p className="text-cuerpo-pequeno text-plataformaSecundario mt-2">
-            Ingrese el código único de un solo uso remitido a {correo}.
+            Ingrese el código de verificación remitido a {correo}.
           </p>
         </div>
 
@@ -183,7 +193,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
               </span>
             </div>
 
-            <div className="flex justify-between gap-2" onPaste={alPegarTexto}>
+            <div className="flex justify-between gap-2 mb-2" onPaste={alPegarTexto}>
               {casillasOtp.map((digito, indice) => (
                 <input
                   key={indice}
@@ -200,16 +210,19 @@ export default function AccesoOtp({ alCompletarAcceso }) {
             </div>
 
             {codigoDemostracion && (
-              <div className="mt-3 flex items-center justify-center">
+              <div className="mt-3 p-3 bg-black/[0.02] border border-black/[0.06] rounded-md-token flex items-center justify-between gap-2">
+                <span className="text-subtexto text-plataformaSecundario">
+                  Código remitido a su casilla: <strong className="font-mono text-plataformaTexto font-semibold">{codigoDemostracion}</strong>
+                </span>
                 <button
                   type="button"
                   onClick={() => {
                     setCasillasOtp(codigoDemostracion.split(''));
                     referenciasCasillas.current[5]?.focus();
                   }}
-                  className="text-subtexto text-plataformaAzul hover:underline font-medium cursor-pointer"
+                  className="text-xs text-plataformaAzul hover:underline font-semibold cursor-pointer shrink-0"
                 >
-                  Modo demo — usar código: <span className="font-mono font-semibold">{codigoDemostracion}</span>
+                  Pegar código
                 </button>
               </div>
             )}
@@ -226,9 +239,9 @@ export default function AccesoOtp({ alCompletarAcceso }) {
             <button
               type="submit"
               disabled={cargando}
-              className="boton-primario w-full flex items-center justify-center gap-2"
+              className="boton-primario w-full flex items-center justify-center gap-2 py-3"
             >
-              <span>{cargando ? 'Verificando...' : 'Verificar e Ingresar'}</span>
+              <span>{cargando ? 'Verificando credenciales...' : 'Verificar e Ingresar'}</span>
               {!cargando && <ArrowRight className="w-4 h-4 stroke-[2]" />}
             </button>
 
@@ -243,7 +256,7 @@ export default function AccesoOtp({ alCompletarAcceso }) {
           </div>
 
           <p className="text-subtexto text-center text-plataformaSecundario leading-normal pt-1">
-            El código tiene vigencia de diez minutos y un solo uso.
+            El código tiene vigencia estricta de diez minutos y queda invalidado tras su uso.
           </p>
         </form>
       </TarjetaBento>

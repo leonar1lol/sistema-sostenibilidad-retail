@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { CheckCircle2, Circle, Lock, ArrowRight, AlertCircle, Paperclip, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, Lock, ArrowRight, AlertCircle, Paperclip, X, Loader2, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import { calcularVisibilidad } from '../../utilidades/motorReglas.js';
@@ -178,9 +179,17 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
   }
 
   const todoRespondido = totalRespondidos === itemsAplicablesVisibles.length && itemsAplicablesVisibles.length > 0;
+  const dimensionActivaDatos = dimensiones.find((d) => d.idDimension === dimensionActiva);
+  
+  const itemsDimActivaRespondidos = itemsDeDimensionActiva.filter((i) => respuestas[i.idItem] != null).length;
+  const dimensionActivaCompletada = itemsDeDimensionActiva.length > 0 && itemsDimActivaRespondidos === itemsDeDimensionActiva.length;
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
+      <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 bg-plataformaAzul/10 text-plataformaAzul rounded-full text-etiqueta font-semibold">
+        <span>Paso 3 de 4 • Cuestionario de Sostenibilidad</span>
+      </div>
+
       <TarjetaBento clasePersonalizada="p-6 mb-5 shadow-sm-token">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
@@ -188,7 +197,7 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
               {datosProveedor?.razonSocial} • RUC {datosProveedor?.ruc}
             </span>
             <h2 className="text-titulo-seccion text-plataformaTexto mt-0.5">
-              Cuestionario de Sostenibilidad de Proveedores
+              Evaluación de Prácticas
             </h2>
           </div>
           <div className="sm:text-right">
@@ -223,12 +232,25 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
               >
                 {completa && <CheckCircle2 className="w-3.5 h-3.5" />}
                 <span>{dim.nombre}</span>
-                <span className="font-mono">{respondidosDim}/{itemsDim.length}</span>
+                <div className="flex items-center justify-center bg-black/10 text-current px-1.5 py-0.5 rounded-full text-[10px] ml-1">
+                  <span>{respondidosDim}/{itemsDim.length}</span>
+                </div>
               </button>
             );
           })}
         </div>
+        
+        {dimensionActivaDatos?.descripcion && (
+          <div className="mt-3 text-cuerpo-pequeno text-plataformaSecundario italic">
+            {dimensionActivaDatos.descripcion}
+          </div>
+        )}
       </TarjetaBento>
+
+      <div className="bg-blue-50/50 border border-blue-100 rounded-md-token p-4 mb-5 flex gap-3 text-cuerpo-pequeno text-blue-800">
+        <Info className="w-5 h-5 shrink-0 text-blue-500" />
+        <p>Seleccione la respuesta que mejor describe las prácticas de su empresa. Cada pregunta es de selección única. Sus respuestas se guardan automáticamente al seleccionar.</p>
+      </div>
 
       {mensajeError && (
         <div className="mb-5 p-3 bg-red-50 border border-red-200/60 rounded-md-token flex items-center gap-2.5 text-cuerpo-pequeno text-red-700">
@@ -237,15 +259,33 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
         </div>
       )}
 
+      {dimensionActivaCompletada && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+          animate={{ opacity: 1, y: 0, scale: 1 }} 
+          className="mb-5 p-4 bg-emerald-50 border border-emerald-200 rounded-md-token flex items-center justify-center gap-3 text-emerald-800 shadow-sm-token"
+        >
+          <div className="bg-emerald-500 text-white rounded-full p-1">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <span className="font-medium text-cuerpo">¡Dimensión completada!</span>
+        </motion.div>
+      )}
+
       <div className="space-y-5">
-        {itemsDeDimensionActiva.map((item) => {
+        {itemsDeDimensionActiva.map((item, indice) => {
           const respuestaElegida = respuestas[item.idItem];
           const deshabilitado = visibilidad[item.idItem]?.deshabilitado;
 
           return (
             <TarjetaBento key={item.idItem} clasePersonalizada={`p-6 shadow-sm-token ${deshabilitado ? 'opacity-50' : ''}`}>
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="insignia-info font-mono font-bold">{item.codigo}</span>
+                <span className="insignia-info font-mono font-bold">
+                  Pregunta {indice + 1} de {itemsDeDimensionActiva.length}
+                </span>
+                <span className="text-subtexto text-plataformaSecundario font-mono px-2 bg-black/[0.03] rounded">
+                  {item.codigo}
+                </span>
                 {deshabilitado && (
                   <span className="insignia-neutra flex items-center gap-1">
                     <Lock className="w-3 h-3" /> Deshabilitado por regla condicional
@@ -286,16 +326,29 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
         })}
       </div>
 
-      <div className="flex items-center justify-end pt-6">
-        <button
-          type="button"
-          disabled={!todoRespondido || enviando}
-          onClick={finalizar}
-          className={`boton-primario ${!todoRespondido || enviando ? 'opacity-40 cursor-not-allowed' : ''}`}
-        >
-          <span>{enviando ? 'Enviando...' : 'Finalizar evaluación'}</span>
-          <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
-        </button>
+      <div className="flex items-center justify-end pt-8 pb-4">
+        {todoRespondido ? (
+          <motion.button
+            whileHover={{ scale: enviando ? 1 : 1.02 }}
+            whileTap={{ scale: enviando ? 1 : 0.98 }}
+            type="button"
+            disabled={enviando}
+            onClick={finalizar}
+            className={`w-full sm:w-auto px-8 py-4 rounded-lg-token text-white font-semibold text-lg flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md-token ${enviando ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <span>{enviando ? 'Enviando resultados...' : '¡Listo! Enviar y ver resultados'}</span>
+            <CheckCircle2 className="w-6 h-6" />
+          </motion.button>
+        ) : (
+          <button
+            type="button"
+            disabled={true}
+            className="boton-primario opacity-40 cursor-not-allowed"
+          >
+            <span>Finalizar evaluación</span>
+            <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
+          </button>
+        )}
       </div>
     </div>
   );

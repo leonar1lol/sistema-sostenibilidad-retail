@@ -3,7 +3,7 @@ import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { iniciarSesionApi } from '../../servicios/servicioApi.js';
 
 export default function InicioSesionCorporativo({ alIniciarSesion }) {
-  const [correo, setCorreo] = useState('admin@intercorpretail.pe');
+  const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState('');
@@ -33,8 +33,11 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
           <h2 className="text-titulo-seccion text-center">
             Inicio de sesión corporativo
           </h2>
-          <p className="text-cuerpo-pequeno text-plataformaSecundario text-center mt-2 mb-8">
-            Acceso restringido para personal del Corporativo y de las unidades de negocio de Intercorp Retail.
+          <p className="text-cuerpo-pequeno text-plataformaSecundario text-center mt-2 mb-2">
+            Panel de administración y control de sostenibilidad.
+          </p>
+          <p className="text-subtexto text-plataformaSecundario text-center mb-6">
+            Acceso restringido para personal del Corporativo y unidades de negocio de Intercorp Retail.
           </p>
         </div>
 
@@ -51,7 +54,7 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 placeholder="usuario@intercorpretail.pe"
-                className="campo-entrada campo-entrada-icono w-full"
+                className="campo-entrada campo-entrada-icono w-full text-xs"
               />
             </div>
           </div>
@@ -67,7 +70,8 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
                 required
                 value={clave}
                 onChange={(e) => setClave(e.target.value)}
-                className="campo-entrada campo-entrada-icono w-full"
+                placeholder="••••••••"
+                className="campo-entrada campo-entrada-icono w-full text-xs"
               />
             </div>
           </div>
@@ -85,7 +89,7 @@ export default function InicioSesionCorporativo({ alIniciarSesion }) {
               disabled={cargando}
               className="boton-primario w-full flex items-center justify-center gap-2"
             >
-              <span>{cargando ? 'Ingresando...' : 'Ingresar'}</span>
+              <span>{cargando ? 'Ingresando...' : 'Ingresar al sistema'}</span>
               <ArrowRight className="w-4 h-4 stroke-[2]" />
             </button>
           </div>

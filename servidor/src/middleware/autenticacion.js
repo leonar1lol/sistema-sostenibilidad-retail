@@ -17,8 +17,16 @@ export const verificarSesion = (peticion, respuesta, siguiente) => {
 };
 
 export const requierePermiso = (codigoPermiso) => (peticion, respuesta, siguiente) => {
-  if (!peticion.usuario?.permisos?.includes(codigoPermiso)) {
-    return respuesta.status(403).json({ exito: false, mensaje: 'No tiene permiso para esta operación.' });
+  const rol = peticion.usuario?.rol || '';
+  const permisos = peticion.usuario?.permisos || [];
+
+  if (
+    rol === 'Administrador Corporativo' ||
+    rol.toLowerCase().includes('admin') ||
+    permisos.includes('*') ||
+    permisos.includes(codigoPermiso)
+  ) {
+    return siguiente();
   }
-  return siguiente();
+  return respuesta.status(403).json({ exito: false, mensaje: 'No tiene permiso para esta operación.' });
 };

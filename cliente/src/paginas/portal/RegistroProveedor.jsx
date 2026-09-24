@@ -11,31 +11,32 @@ import {
   Globe,
   Store,
   Layers,
-  CheckCircle2
+  CheckCircle2,
+  Check
 } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
 import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi } from '../../servicios/servicioApi.js';
 
 export default function RegistroProveedor({ proveedorExistente, contextoEnlace, alCompletarRegistro }) {
-  const [ruc, setRuc] = useState(proveedorExistente?.ruc || '');
-  const [razonSocial, setRazonSocial] = useState(proveedorExistente?.razonSocial || '');
-  const [nombreComercial, setNombreComercial] = useState(proveedorExistente?.nombreComercial || '');
-  const [direccionFiscal, setDireccionFiscal] = useState(proveedorExistente?.direccionFiscal || '');
-  const [departamento, setDepartamento] = useState(proveedorExistente?.departamento || 'Lima');
-  const [representante, setRepresentante] = useState(proveedorExistente?.representante || '');
-  const [cargoRepresentante, setCargoRepresentante] = useState(proveedorExistente?.cargoRepresentante || 'Gerente General');
-  const [telefono, setTelefono] = useState(proveedorExistente?.telefono || '');
-  const [sitioWeb, setSitioWeb] = useState(proveedorExistente?.sitioWeb || '');
-  const [tamanoEmpresa, setTamanoEmpresa] = useState(proveedorExistente?.tamanoEmpresa || 'Pequeña empresa (11 - 50 colaboradores)');
-  const [aniosOperacion, setAniosOperacion] = useState(proveedorExistente?.aniosOperacion || 'De 2 a 5 años');
-  const [idIndustria, setIdIndustria] = useState(proveedorExistente?.idIndustria ? String(proveedorExistente.idIndustria) : '');
-  const [tipo, setTipo] = useState(proveedorExistente?.tipo || 'Retail');
+  const [ruc, setRuc] = useState('');
+  const [razonSocial, setRazonSocial] = useState('');
+  const [nombreComercial, setNombreComercial] = useState('');
+  const [direccionFiscal, setDireccionFiscal] = useState('');
+  const [departamento, setDepartamento] = useState('');
+  const [representante, setRepresentante] = useState('');
+  const [cargoRepresentante, setCargoRepresentante] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [sitioWeb, setSitioWeb] = useState('');
+  const [tamanoEmpresa, setTamanoEmpresa] = useState('');
+  const [aniosOperacion, setAniosOperacion] = useState('');
+  const [idIndustria, setIdIndustria] = useState('');
+  const [tipo, setTipo] = useState('Retail');
   const [industrias, setIndustrias] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [idUnidad, setIdUnidad] = useState(
-    contextoEnlace?.idUnidad ? String(contextoEnlace.idUnidad) : (proveedorExistente?.idUnidad ? String(proveedorExistente.idUnidad) : '1')
+    contextoEnlace?.idUnidad ? String(contextoEnlace.idUnidad) : ''
   );
-  const [aceptaDatosPersonales, setAceptaDatosPersonales] = useState(true);
+  const [aceptaDatosPersonales, setAceptaDatosPersonales] = useState(false);
   const [errorConsentimiento, setErrorConsentimiento] = useState('');
   const [mensajeError, setMensajeError] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -44,26 +45,77 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
     obtenerDatosMaestrosPortalApi()
       .then((datos) => {
         setIndustrias(datos.industrias || []);
-        setIdIndustria((actual) => actual || String(datos.industrias?.[0]?.id_industria ?? ''));
         setUnidades(datos.unidadesNegocio || []);
-        if (!contextoEnlace?.idUnidad && datos.unidadesNegocio?.length > 0) {
-          setIdUnidad((actual) => actual || String(datos.unidadesNegocio[0]?.id_unidad ?? '1'));
-        }
       })
       .catch((error) => setMensajeError(error.message));
   }, []);
 
+  const manejarCambioRuc = (evento) => {
+    const soloDigitos = evento.target.value.replace(/\D/g, '').slice(0, 11);
+    setRuc(soloDigitos);
+    setMensajeError('');
+  };
+
+  const manejarCambioTelefono = (evento) => {
+    const soloDigitos = evento.target.value.replace(/\D/g, '').slice(0, 9);
+    setTelefono(soloDigitos);
+    setMensajeError('');
+  };
+
   const manejarEnvio = async (evento) => {
     evento.preventDefault();
+    setMensajeError('');
+    setErrorConsentimiento('');
+
+    if (ruc.length !== 11) {
+      setMensajeError('El número de RUC debe tener exactamente 11 dígitos numéricos.');
+      return;
+    }
+
+    if (telefono.length !== 9) {
+      setMensajeError('El teléfono celular corporativo debe tener exactamente 9 dígitos numéricos.');
+      return;
+    }
+
+    if (!departamento) {
+      setMensajeError('Debe seleccionar el departamento o región fiscal.');
+      return;
+    }
+
+    if (!cargoRepresentante.trim()) {
+      setMensajeError('Debe ingresar el cargo del representante.');
+      return;
+    }
+
+    if (!idIndustria) {
+      setMensajeError('Debe seleccionar el sector económico o industria.');
+      return;
+    }
+
+    if (!contextoEnlace?.idUnidad && !idUnidad) {
+      setMensajeError('Debe seleccionar la unidad de negocio solicitante de Intercorp.');
+      return;
+    }
+
+    if (!tamanoEmpresa) {
+      setMensajeError('Debe seleccionar el tamaño de la empresa.');
+      return;
+    }
+
+    if (!aniosOperacion) {
+      setMensajeError('Debe seleccionar los años de operación de la empresa.');
+      return;
+    }
+
     if (!aceptaDatosPersonales) {
       setErrorConsentimiento('Debe autorizar el tratamiento de datos personales para continuar.');
       return;
     }
 
+    const idUnidadFinal = contextoEnlace?.idUnidad ? Number(contextoEnlace.idUnidad) : Number(idUnidad || 1);
+
     setEnviando(true);
-    setMensajeError('');
     try {
-      const idUnidadFinal = contextoEnlace?.idUnidad ? Number(contextoEnlace.idUnidad) : Number(idUnidad || 1);
       const datos = await registrarProveedorPortalApi({
         ruc,
         razonSocial,
@@ -94,6 +146,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
         tamanoEmpresa,
         aniosOperacion,
         idIndustria,
+        idUnidad: idUnidadFinal,
         evaluacionFinalizada: datos.evaluacionFinalizada
       });
     } catch (error) {
@@ -104,40 +157,29 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
   };
 
   const listaDepartamentos = [
-    'Lima',
-    'Arequipa',
-    'La Libertad',
-    'Piura',
-    'Cusco',
-    'Junín',
-    'Lambayeque',
-    'Ancash',
-    'Callao',
-    'Ica',
-    'San Martín',
-    'Loreto',
-    'Cajamarca',
-    'Tacna',
-    'Huánuco',
-    'Ayacucho',
-    'Ucayali',
-    'Puno',
-    'Moquegua',
-    'Tumbes',
-    'Otras Regiones / Exterior'
+    'Lima', 'Arequipa', 'La Libertad', 'Piura', 'Cusco', 'Junín', 'Lambayeque', 'Ancash',
+    'Callao', 'Ica', 'San Martín', 'Loreto', 'Cajamarca', 'Tacna', 'Huánuco', 'Ayacucho',
+    'Ucayali', 'Puno', 'Moquegua', 'Tumbes', 'Otras Regiones / Exterior'
   ];
 
+  const seccionFiscalCompleta = ruc.trim().length === 11 && razonSocial.trim().length > 0 && departamento !== '';
+  const seccionContactoCompleta = representante.trim().length > 0 && cargoRepresentante.trim().length > 0 && telefono.trim().length === 9;
+  const seccionOperativaCompleta = idIndustria !== '' && (Boolean(contextoEnlace?.idUnidad) || idUnidad !== '') && tamanoEmpresa !== '' && aniosOperacion !== '';
+
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8">
-      <TarjetaBento clasePersonalizada="max-w-3xl w-full p-8 md:p-10 shadow-sm-token">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-black/[0.06]">
+    <div className="flex items-center justify-center min-h-[calc(100vh-220px)] px-4 py-8">
+      <TarjetaBento clasePersonalizada="max-w-3xl w-full p-8 md:p-10 shadow-sm-token relative">
+        <span className="absolute top-4 right-4 bg-black/[0.05] text-plataformaSecundario text-[10px] font-bold px-2 py-1 rounded-sm-token uppercase tracking-widest">
+          Paso 2 de 4
+        </span>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6 pb-4 border-b border-black/[0.06] mt-2">
           <div>
-            <span className="insignia-info mb-2">Paso 1 de 2 • Identificación y Homologación</span>
+            <span className="insignia-info mb-2">Identificación y Homologación</span>
             <h2 className="text-titulo-seccion text-plataformaTexto mt-1">
               Ficha corporativa del proveedor
             </h2>
-            <p className="text-cuerpo-pequeno text-plataformaSecundario mt-1">
-              Complete los datos fiscales, operativos y de contacto requeridos para la homologación ESG.
+            <p className="text-cuerpo-pequeno text-plataformaSecundario mt-1 max-w-xl">
+              Complete los datos fiscales, operativos y de contacto requeridos para el proceso de homologación ESG.
             </p>
           </div>
           {proveedorExistente?.correo && (
@@ -149,12 +191,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
         </div>
 
         <form onSubmit={manejarEnvio} className="space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-4 h-4 text-plataformaAzul" />
-              <span className="text-etiqueta font-semibold text-plataformaTexto uppercase tracking-wider text-[11px]">
-                Información Fiscal y de la Entidad
-              </span>
+          <div className="relative border border-black/[0.05] p-5 rounded-lg-token bg-white">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-black/[0.04]">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-plataformaAzul" />
+                <span className="text-sm font-semibold text-plataformaTexto uppercase tracking-wider">
+                  Información Fiscal y de la Entidad
+                </span>
+              </div>
+              {seccionFiscalCompleta && <Check className="w-5 h-5 text-emerald-500 stroke-[2.5]" />}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,11 +211,13 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <FileText className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={11}
                     required
-                    placeholder="20100055237"
+                    placeholder="20100130204"
                     value={ruc}
-                    onChange={(e) => setRuc(e.target.value)}
+                    onChange={manejarCambioRuc}
                     className="campo-entrada campo-entrada-icono w-full font-mono text-xs"
                   />
                 </div>
@@ -195,7 +242,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <input
                     type="text"
                     required
-                    placeholder="Distribuidora Logística del Perú S.A.C."
+                    placeholder="Distribuidora de Alimentos del Norte S.A.C."
                     value={razonSocial}
                     onChange={(e) => setRazonSocial(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -211,7 +258,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <Store className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
-                    placeholder="Logística Perú Express"
+                    placeholder="AlNorte Express"
                     value={nombreComercial}
                     onChange={(e) => setNombreComercial(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -227,7 +274,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <MapPin className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
-                    placeholder="Av. República de Panamá 3505, San Isidro"
+                    placeholder="Av. La Marina 2500, San Miguel"
                     value={direccionFiscal}
                     onChange={(e) => setDireccionFiscal(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -237,13 +284,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                  Departamento / Región
+                  Departamento / Región *
                 </label>
                 <select
                   value={departamento}
+                  required
                   onChange={(e) => setDepartamento(e.target.value)}
                   className="campo-select w-full text-xs"
                 >
+                  <option value="">Seleccione su departamento</option>
                   {listaDepartamentos.map((dep) => (
                     <option key={dep} value={dep}>{dep}</option>
                   ))}
@@ -252,12 +301,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-3 pt-2">
-              <User className="w-4 h-4 text-plataformaAzul" />
-              <span className="text-etiqueta font-semibold text-plataformaTexto uppercase tracking-wider text-[11px]">
-                Contacto y Representación Legal
-              </span>
+          <div className="relative border border-black/[0.05] p-5 rounded-lg-token bg-white">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-black/[0.04]">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-plataformaAzul" />
+                <span className="text-sm font-semibold text-plataformaTexto uppercase tracking-wider">
+                  Contacto y Representación Legal
+                </span>
+              </div>
+              {seccionContactoCompleta && <Check className="w-5 h-5 text-emerald-500 stroke-[2.5]" />}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -270,7 +322,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <input
                     type="text"
                     required
-                    placeholder="Miguel Ángel Torres"
+                    placeholder="Carlos Eduardo Mendoza Rivera"
                     value={representante}
                     onChange={(e) => setRepresentante(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -280,13 +332,14 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                  Cargo del Representante
+                  Cargo del Representante *
                 </label>
                 <div className="relative">
                   <Briefcase className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
-                    placeholder="Gerente General / Director de Operaciones"
+                    required
+                    placeholder="Director de Operaciones"
                     value={cargoRepresentante}
                     onChange={(e) => setCargoRepresentante(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -296,16 +349,20 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                  Teléfono / Celular corporativo
+                  Teléfono / Celular corporativo (9 dígitos) *
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={9}
+                    required
                     placeholder="987654321"
                     value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
-                    className="campo-entrada campo-entrada-icono w-full text-xs"
+                    onChange={manejarCambioTelefono}
+                    className="campo-entrada campo-entrada-icono w-full text-xs font-mono"
                   />
                 </div>
               </div>
@@ -318,7 +375,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <Globe className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
-                    placeholder="https://www.distribuidoraperu.com"
+                    placeholder="https://www.alnorteexpress.com.pe"
                     value={sitioWeb}
                     onChange={(e) => setSitioWeb(e.target.value)}
                     className="campo-entrada campo-entrada-icono w-full text-xs"
@@ -328,12 +385,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-3 pt-2">
-              <Layers className="w-4 h-4 text-plataformaAzul" />
-              <span className="text-etiqueta font-semibold text-plataformaTexto uppercase tracking-wider text-[11px]">
-                Perfil Operativo y Cadena de Suministro
-              </span>
+          <div className="relative border border-black/[0.05] p-5 rounded-lg-token bg-white">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-black/[0.04]">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-plataformaAzul" />
+                <span className="text-sm font-semibold text-plataformaTexto uppercase tracking-wider">
+                  Perfil Operativo y Cadena de Suministro
+                </span>
+              </div>
+              {seccionOperativaCompleta && <Check className="w-5 h-5 text-emerald-500 stroke-[2.5]" />}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -343,9 +403,11 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                 </label>
                 <select
                   value={idIndustria}
+                  required
                   onChange={(e) => setIdIndustria(e.target.value)}
                   className="campo-select w-full text-xs"
                 >
+                  <option value="">Seleccione su sector económico</option>
                   {industrias.map((ind) => (
                     <option key={ind.id_industria} value={ind.id_industria}>{ind.nombre}</option>
                   ))}
@@ -358,10 +420,12 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                 </label>
                 <select
                   value={idUnidad}
+                  required
                   onChange={(e) => setIdUnidad(e.target.value)}
                   disabled={Boolean(contextoEnlace?.idUnidad)}
                   className="campo-select w-full text-xs"
                 >
+                  <option value="">Seleccione la unidad de Intercorp</option>
                   {unidades.map((uni) => (
                     <option key={uni.id_unidad} value={uni.id_unidad}>{uni.nombre}</option>
                   ))}
@@ -370,13 +434,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                  Tamaño de la Empresa
+                  Tamaño de la Empresa *
                 </label>
                 <select
                   value={tamanoEmpresa}
+                  required
                   onChange={(e) => setTamanoEmpresa(e.target.value)}
                   className="campo-select w-full text-xs"
                 >
+                  <option value="">Seleccione tamaño de empresa</option>
                   <option value="Microempresa (1 - 10 colaboradores)">Microempresa (1 - 10 colaboradores)</option>
                   <option value="Pequeña empresa (11 - 50 colaboradores)">Pequeña empresa (11 - 50 colaboradores)</option>
                   <option value="Mediana empresa (51 - 250 colaboradores)">Mediana empresa (51 - 250 colaboradores)</option>
@@ -386,13 +452,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
               <div>
                 <label className="text-etiqueta text-plataformaSecundario mb-1.5 block">
-                  Años de Operación en el Mercado
+                  Años de Operación en el Mercado *
                 </label>
                 <select
                   value={aniosOperacion}
+                  required
                   onChange={(e) => setAniosOperacion(e.target.value)}
                   className="campo-select w-full text-xs"
                 >
+                  <option value="">Seleccione años de trayectoria</option>
                   <option value="Menos de 2 años">Menos de 2 años</option>
                   <option value="De 2 a 5 años">De 2 a 5 años</option>
                   <option value="De 6 a 10 años">De 6 a 10 años</option>
