@@ -14,7 +14,8 @@ import {
   Shield,
   Megaphone,
   Building2,
-  ArrowUpRight
+  ArrowUpRight,
+  FileText
 } from 'lucide-react';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import GestionProveedores from './GestionProveedores.jsx';
