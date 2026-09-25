@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckCircle2,
   TrendingUp,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
+import VisorReportePdf from '../../componentes/VisorReportePdf.jsx';
 
 const ICONOS_POR_CODIGO_DIMENSION = {
   AMB: { icono: Leaf, color: 'text-emerald-600', barra: 'bg-emerald-500' },
@@ -44,6 +45,7 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
   };
 
   const manejarReinicio = alReiniciar || volverAlInicio;
+  const [mostrarCertificadoModal, setMostrarCertificadoModal] = useState(false);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
@@ -77,11 +79,11 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => window.print()}
-            className="boton-secundario text-xs flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setMostrarCertificadoModal(true)}
+            className="boton-primario text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <FileDown className="w-4 h-4 stroke-[1.8]" />
-            <span>Descargar informe</span>
+            <span>Ver y Descargar Certificado Oficial</span>
           </button>
           {manejarReinicio && (
             <button
@@ -226,6 +228,22 @@ export default function ResultadoBento({ resultado, datosProveedor, alReiniciar,
           </div>
         )}
       </TarjetaBento>
+
+      {mostrarCertificadoModal && (
+        <VisorReportePdf
+          tipoReporte="certificado_individual"
+          datos={{
+            ...resultado,
+            razonSocial: datosProveedor?.razonSocial || 'Distribuidora Retail S.A.C.',
+            ruc: datosProveedor?.ruc || '20100130204',
+            unidad: datosProveedor?.unidad || 'Supermercados Peruanos',
+            puntaje: puntajeGlobal,
+            nivel: resultado?.nivel || 'Avanzado'
+          }}
+          proveedorSeleccionado={datosProveedor}
+          alCerrar={() => setMostrarCertificadoModal(false)}
+        />
+      )}
     </div>
   );
 }

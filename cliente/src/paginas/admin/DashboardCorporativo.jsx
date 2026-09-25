@@ -23,6 +23,7 @@ import GestionCampanias from './GestionCampanias.jsx';
 import GestionUsuariosRoles from './GestionUsuariosRoles.jsx';
 import ConfiguracionUnidadesIndustrias from './ConfiguracionUnidadesIndustrias.jsx';
 import BitacoraAuditoria from './BitacoraAuditoria.jsx';
+import CentroReportes from './CentroReportes.jsx';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
 import { listarProveedoresAdminApi, listarUnidadesApi } from '../../servicios/servicioApi.js';
 
@@ -259,6 +260,22 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
               RF16/24
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => seleccionarPestana('reportes')}
+            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              pestanaActiva === 'reportes'
+                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
+                : 'text-plataformaSecundario hover:text-plataformaTexto'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Reportes y Auditoría</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+              RF13 / 6 Informes
+            </span>
+          </button>
         </nav>
       </div>
 
@@ -299,8 +316,17 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
               onClick={descargarReporteExcel}
               className="boton-secundario flex items-center gap-1.5 cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Descargar Excel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => seleccionarPestana('reportes')}
+              className="boton-secundario flex items-center gap-1.5 cursor-pointer border-plataformaAzul/40 text-plataformaAzul hover:bg-plataformaAzul/[0.05]"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Centro de Reportes (6)</span>
             </button>
           </div>
 
@@ -472,6 +498,13 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
       {pestanaActiva === 'configuracion' && <ConfiguracionUnidadesIndustrias />}
 
       {pestanaActiva === 'auditoria' && <BitacoraAuditoria />}
+
+      {pestanaActiva === 'reportes' && (
+        <CentroReportes
+          proveedores={proveedores}
+          unidades={unidades}
+        />
+      )}
     </div>
   );
 }
