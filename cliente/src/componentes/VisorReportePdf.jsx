@@ -14,7 +14,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
   };
 
   const renderizarEncabezado = () => (
-    <div className="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-end">
+    <div className="encabezado-reporte border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-end">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
           GRUPO INTERCORP RETAIL
@@ -32,7 +32,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
   );
 
   const renderizarPiePagina = () => (
-    <div className="mt-8 pt-3 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-500">
+    <div className="mt-8 pt-3 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-500 break-inside-avoid print:mt-4">
       <p>Grupo Intercorp Retail • Documento oficial de confidencialidad institucional.</p>
       <p>Trazabilidad criptográfica garantizada • Sistema ESG 2026</p>
     </div>
@@ -51,7 +51,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
           Padrón General de Proveedores y Estado de Homologación
         </h2>
         
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="tarjeta-kpi grid grid-cols-3 gap-3 mb-6">
           <div className="bg-slate-50 p-3.5 border border-slate-200 rounded-md text-center">
             <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Proveedores</span>
             <span className="block text-2xl font-extrabold text-slate-900 mt-0.5">{total}</span>
@@ -170,7 +170,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
         <div className="space-y-4">
           {listaUnidades.map((u, idx) => (
-            <div key={idx} className="border border-slate-200 p-3.5 rounded-lg bg-slate-50/50">
+            <div key={idx} className="item-unidad border border-slate-200 p-3.5 rounded-lg bg-slate-50/50">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-xs font-bold text-slate-800">{u.nombre}</span>
                 <span className="text-xs font-bold font-mono text-slate-900">{u.porcentaje}%</span>
@@ -200,7 +200,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
     const hash = 'a8f94b2e81c0d45e732b1f8934c56e01';
 
     return (
-      <div className="border-4 border-double border-slate-800 p-8 rounded-lg bg-white relative">
+      <div className="bloque-certificado border-4 border-double border-slate-800 p-8 rounded-lg bg-white relative">
         <div className="text-center mb-8">
           <div className="inline-block px-3 py-1 rounded bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 tracking-wider mb-2">
             GRUPO INTERCORP RETAIL • CERTIFICACIÓN OFICIAL ESG
@@ -317,7 +317,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
         </p>
 
         <div className="space-y-4 mb-6">
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="bloque-diagnostico p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-bold text-amber-900">Dimensión Ambiental • Huella Hídrica y Residuos</span>
               <span className="text-xs font-bold font-mono text-amber-800">55 / 100</span>
@@ -330,7 +330,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
             </p>
           </div>
 
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+          <div className="bloque-diagnostico p-4 bg-rose-50 border border-rose-200 rounded-lg">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-bold text-rose-900">Cadena de Suministro • Debida Diligencia de Subcontratas</span>
               <span className="text-xs font-bold font-mono text-rose-800">50 / 100</span>
@@ -404,12 +404,10 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
           }
 
           #hoja-reporte-imprimible {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: relative !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 16mm 20mm !important;
+            padding: 12mm 16mm !important;
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
@@ -420,7 +418,30 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
             display: none !important;
           }
 
-          tr, .bloque-reporte {
+          thead {
+            display: table-header-group !important;
+          }
+
+          tfoot {
+            display: table-footer-group !important;
+          }
+
+          tr {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          h2, h3, .encabezado-reporte {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+          }
+
+          .encabezado-reporte {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .tarjeta-kpi, .item-unidad, .bloque-diagnostico, .bloque-certificado {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
@@ -462,7 +483,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
         {tipoReporte !== 'certificado_individual' && renderizarEncabezado()}
 
-        <div className="min-h-[400px]">
+        <div className="min-h-[400px] print:min-h-0">
           {renderizarContenido()}
         </div>
 
