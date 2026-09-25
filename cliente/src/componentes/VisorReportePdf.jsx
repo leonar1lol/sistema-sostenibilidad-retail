@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }) => {
   const fechaActual = new Date().toLocaleDateString('es-PE', {
@@ -32,7 +33,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
   );
 
   const renderizarPiePagina = () => (
-    <div className="mt-8 pt-3 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-500 break-inside-avoid print:mt-4">
+    <div className="pie-pagina-reporte mt-6 pt-3 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-500 break-inside-avoid print:mt-3">
       <p>Grupo Intercorp Retail • Documento oficial de confidencialidad institucional.</p>
       <p>Trazabilidad criptográfica garantizada • Sistema ESG 2026</p>
     </div>
@@ -68,6 +69,9 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
         <table className="w-full text-xs border-collapse">
           <thead>
+            <tr className="fila-margen-impresion hidden print:table-row">
+              <th colSpan="6" className="h-[12mm] p-0 border-0 bg-transparent font-normal"></th>
+            </tr>
             <tr className="bg-slate-100 border-y border-slate-300">
               <th className="py-2 px-2 text-left font-bold text-slate-700">RUC</th>
               <th className="py-2 px-2 text-left font-bold text-slate-700">Razón Social</th>
@@ -98,6 +102,11 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
               </tr>
             )}
           </tbody>
+          <tfoot>
+            <tr className="fila-margen-inferior hidden print:table-row">
+              <td colSpan="6" className="h-[10mm] p-0 border-0 bg-transparent"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     );
@@ -110,12 +119,15 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
         <h2 className="text-base font-bold text-slate-900 mb-2 uppercase tracking-wider border-b border-slate-200 pb-2">
           Matriz de Criticidad y Debida Diligencia
         </h2>
-        <p className="text-xs text-slate-600 mb-4">
+        <p className="text-xs text-slate-600 mb-2 print:mb-0">
           Supervisión de contratistas estratégicos en las 7 unidades de negocio, nivel de exposición al riesgo ESG y medidas correctivas.
         </p>
         
         <table className="w-full text-xs border-collapse">
           <thead>
+            <tr className="fila-margen-impresion hidden print:table-row">
+              <th colSpan="4" className="h-[12mm] p-0 border-0 bg-transparent font-normal"></th>
+            </tr>
             <tr className="bg-slate-100 border-y border-slate-300">
               <th className="py-2 px-2 text-left font-bold text-slate-700">Proveedor</th>
               <th className="py-2 px-2 text-left font-bold text-slate-700">Riesgo ESG</th>
@@ -143,6 +155,11 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="fila-margen-inferior hidden print:table-row">
+              <td colSpan="4" className="h-[10mm] p-0 border-0 bg-transparent"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     );
@@ -274,12 +291,15 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
         <h2 className="text-base font-bold text-slate-900 mb-2 uppercase tracking-wider border-b border-slate-200 pb-2">
           Bitácora Forense de Seguridad y Auditoría
         </h2>
-        <p className="text-xs text-slate-600 mb-4">
+        <p className="text-xs text-slate-600 mb-2 print:mb-0">
           Trazabilidad inmutable de accesos y operaciones sensibles bajo el principio de mínimo privilegio.
         </p>
 
         <table className="w-full text-[11px] border-collapse">
           <thead>
+            <tr className="fila-margen-impresion hidden print:table-row">
+              <th colSpan="6" className="h-[12mm] p-0 border-0 bg-transparent font-normal"></th>
+            </tr>
             <tr className="bg-slate-100 border-y border-slate-300">
               <th className="py-2 px-2 text-left font-bold text-slate-700">Fecha y Hora</th>
               <th className="py-2 px-2 text-left font-bold text-slate-700">Usuario</th>
@@ -301,6 +321,11 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="fila-margen-inferior hidden print:table-row">
+              <td colSpan="6" className="h-[10mm] p-0 border-0 bg-transparent"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     );
@@ -359,7 +384,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
     }
   };
 
-  return (
+  const contenidoModal = (
     <div
       id="modal-visor-reporte-pdf"
       className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
@@ -379,35 +404,27 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
             print-color-adjust: exact !important;
           }
 
-          body * {
-            visibility: hidden !important;
-          }
-
-          #modal-visor-reporte-pdf,
-          #modal-visor-reporte-pdf #hoja-reporte-imprimible,
-          #modal-visor-reporte-pdf #hoja-reporte-imprimible * {
-            visibility: visible !important;
+          body > *:not(#modal-visor-reporte-pdf) {
+            display: none !important;
           }
 
           #modal-visor-reporte-pdf {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            display: block !important;
+            position: static !important;
             width: 100% !important;
             height: auto !important;
-            min-height: 100% !important;
+            min-height: 0 !important;
             background: #ffffff !important;
             margin: 0 !important;
             padding: 0 !important;
-            z-index: 999999 !important;
             overflow: visible !important;
           }
 
           #hoja-reporte-imprimible {
-            position: relative !important;
+            position: static !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 12mm 16mm !important;
+            padding: 10mm 16mm 4mm 16mm !important;
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
@@ -441,7 +458,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
             page-break-inside: avoid !important;
           }
 
-          .tarjeta-kpi, .item-unidad, .bloque-diagnostico, .bloque-certificado {
+          .tarjeta-kpi, .item-unidad, .bloque-diagnostico, .bloque-certificado, .pie-pagina-reporte {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
@@ -450,7 +467,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
       <div
         id="hoja-reporte-imprimible"
-        className="max-w-4xl w-full bg-white text-slate-900 shadow-2xl rounded-xl p-8 sm:p-12 my-6 font-sans border border-slate-200 relative"
+        className="max-w-4xl w-full bg-white text-slate-900 shadow-2xl rounded-xl p-8 sm:p-12 my-6 font-sans border border-slate-200 relative print:my-0 print:p-0"
       >
         <div className="no-imprimir flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-2">
@@ -491,6 +508,10 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(contenidoModal, document.body)
+    : contenidoModal;
 };
 
 export default VisorReportePdf;
