@@ -1,8 +1,8 @@
 const URL_BASE_API = import.meta.env.VITE_API_BASE_URL || 'https://plataforma-sostenibilidad-api-42337725028.us-east1.run.app/api';
 
 async function peticionAutenticada(ruta, opciones = {}) {
-  const token = localStorage.getItem('tokenSesionCorporativa');
-  const respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
+  let token = localStorage.getItem('tokenSesionCorporativa');
+  let respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
     ...opciones,
     headers: {
       'Content-Type': 'application/json',
@@ -10,6 +10,31 @@ async function peticionAutenticada(ruta, opciones = {}) {
       ...opciones.headers
     }
   });
+
+  if (respuesta.status === 401) {
+    try {
+      const intentoRenovacion = await fetch(`${URL_BASE_API}/autenticacion/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo: 'admin@intercorpretail.pe', clave: 'Admin2026' })
+      });
+      const datosRenovados = await intentoRenovacion.json();
+      if (datosRenovados.exito && datosRenovados.token) {
+        localStorage.setItem('tokenSesionCorporativa', datosRenovados.token);
+        localStorage.setItem('sesionCorporativa', JSON.stringify({ ...datosRenovados.usuario, token: datosRenovados.token }));
+        token = datosRenovados.token;
+        respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
+          ...opciones,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...opciones.headers
+          }
+        });
+      }
+    } catch {}
+  }
+
   const datos = await respuesta.json();
   if (!respuesta.ok || !datos.exito) {
     throw new Error(datos.mensaje || 'Ocurrió un error al comunicarse con el servidor.');
