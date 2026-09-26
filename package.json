@@ -9,6 +9,9 @@
     "cliente:desarrollo": "npm --prefix cliente run desarrollo",
     "cliente:construir": "npm --prefix cliente run construir",
     "servidor:desarrollo": "npm --prefix servidor run desarrollo",
-    "servidor:iniciar": "npm --prefix servidor run iniciar"
+    "servidor:iniciar": "npm --prefix servidor run iniciar",
+    "probar": "npm --prefix servidor run probar",
+    "probar:cobertura": "npm --prefix servidor run probar:cobertura",
+    "test": "npm --prefix servidor run probar"
   }
 }

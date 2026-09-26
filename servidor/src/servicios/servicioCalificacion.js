@@ -42,7 +42,7 @@ export const calcularPuntajes = (itemsRespondidos, dimensiones) => {
   const puntajesPorDimension = [];
   for (const dimension of dimensiones) {
     const acumulado = acumuladoPorDimension[dimension.idDimension];
-    if (!acumulado || acumulado.sumaPesos === 0) continue; // se omite, no cuenta como 0
+    if (!acumulado || acumulado.sumaPesos === 0) continue;
 
     puntajesPorDimension.push({
       idDimension: dimension.idDimension,

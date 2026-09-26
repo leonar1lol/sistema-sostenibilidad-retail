@@ -15,11 +15,12 @@ import {
   listarEvidenciaItemPortal,
   eliminarEvidenciaPortal
 } from '../controladores/controladorEvidencia.js';
+import { limitadorSolicitudOtp, limitadorVerificacionOtp } from '../middleware/limitadorPeticiones.js';
 
 export const enrutadorPortal = Router();
 
-enrutadorPortal.post('/acceso', solicitarAcceso);
-enrutadorPortal.post('/verificar', verificarAcceso);
+enrutadorPortal.post('/acceso', limitadorSolicitudOtp, solicitarAcceso);
+enrutadorPortal.post('/verificar', limitadorVerificacionOtp, verificarAcceso);
 enrutadorPortal.post('/registro', verificarSesionProveedor, registrarProveedor);
 
 enrutadorPortal.get('/cuestionario', verificarSesionProveedor, requiereEvaluacionAsignada, obtenerCuestionario);

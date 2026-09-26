@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "iniciar": "node src/indice.js",
-    "desarrollo": "node --watch src/indice.js"
+    "desarrollo": "node --watch src/indice.js",
+    "probar": "node --test pruebas/**/*.test.js",
+    "probar:cobertura": "node --test --experimental-test-coverage pruebas/**/*.test.js",
+    "test": "node --test pruebas/**/*.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1133.0",

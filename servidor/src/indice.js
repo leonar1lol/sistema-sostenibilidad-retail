@@ -13,12 +13,54 @@ import { enrutadorBancoItems } from './rutas/rutasBancoItems.js';
 import { enrutadorCampania } from './rutas/rutasCampania.js';
 import { enrutadorPortal } from './rutas/rutasPortal.js';
 import { grupoConexiones } from './configuracion/baseDatos.js';
+import { aplicarCabecerasSeguridad } from './middleware/seguridadHeaders.js';
+
 dotenv.config();
+
+if (!process.env.CLAVE_SECRETA_JWT) {
+  console.error('Error crítico de inicialización: La variable de entorno CLAVE_SECRETA_JWT es obligatoria y no está configurada.');
+  process.exit(1);
+}
 
 const aplicacionServidor = express();
 const puertoServicio = process.env.PORT || process.env.PUERTO || 4000;
 
-aplicacionServidor.use(cors());
+aplicacionServidor.disable('x-powered-by');
+
+const origenesPorDefecto = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+];
+
+const obtenerOrigenesPermitidos = () => {
+  const configurados = (process.env.ORIGENES_PERMITIDOS || '')
+    .split(',')
+    .map((origen) => origen.trim())
+    .filter(Boolean);
+  const urlApp = process.env.URL_BASE_APP ? [process.env.URL_BASE_APP.trim()] : [];
+  return Array.from(new Set([...origenesPorDefecto, ...configurados, ...urlApp]));
+};
+
+const opcionesCors = {
+  origin: (origen, llamadaRetorno) => {
+    if (!origen) {
+      return llamadaRetorno(null, true);
+    }
+    const permitidos = obtenerOrigenesPermitidos();
+    if (permitidos.includes(origen) || permitidos.includes('*')) {
+      return llamadaRetorno(null, true);
+    }
+    return llamadaRetorno(new Error('Acceso no autorizado por la política CORS.'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+aplicacionServidor.use(aplicarCabecerasSeguridad);
+aplicacionServidor.use(cors(opcionesCors));
 aplicacionServidor.use(express.json());
 
 aplicacionServidor.use('/api/autenticacion', enrutadorAutenticacion);
@@ -74,6 +116,17 @@ aplicacionServidor.get('/api/sistema/monitoreo-bd', async (peticion, respuesta) 
     ]
   });
 });
+
+aplicacionServidor.use((error, peticion, respuesta, siguiente) => {
+  if (error && error.message === 'Acceso no autorizado por la política CORS.') {
+    return respuesta.status(403).json({
+      exito: false,
+      mensaje: 'Acceso denegado por política de seguridad de origen (CORS).'
+    });
+  }
+  return siguiente(error);
+});
+
 Sentry.setupExpressErrorHandler(aplicacionServidor);
 
 aplicacionServidor.listen(puertoServicio, () => {

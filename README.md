@@ -50,6 +50,22 @@ Ver `documentacion/ARQUITECTURA_DATOS.md` para el modelo de datos completo (diag
 
 ---
 
+## ⚙️ Integración Continua (CI)
+
+[![Integración Continua](https://github.com/leonar1lol/sistema-sostenibilidad-retail/actions/workflows/verificacion.yml/badge.svg)](https://github.com/leonar1lol/sistema-sostenibilidad-retail/actions/workflows/verificacion.yml)
+
+El proyecto cuenta con un flujo automatizado de Integración Continua mediante GitHub Actions (`.github/workflows/verificacion.yml`):
+
+* **Eventos disparadores:** Se ejecuta automáticamente ante cada evento `push` hacia la rama `main` y en solicitudes de extracción (`pull_request`) con destino a `main`.
+* **Validaciones automatizadas:**
+  1. Instalación limpia y reproducible de dependencias monorepo con `npm ci` aprovechando la caché nativa.
+  2. Ejecución integral de la suite de pruebas unitarias y de integración (`npm test`).
+  3. Medición y reporte de cobertura de los módulos evaluados (`npm run probar:cobertura`).
+  4. Compilación estricta del cliente web con Vite (`npm --prefix cliente run construir`).
+* **Alcance estricto de CI:** Este flujo no realiza despliegues automatizados (CD). La infraestructura en producción (Cloudflare Pages y Google Cloud Run) opera de manera desacoplada e inalterada.
+
+---
+
 ## 🚀 Instalación y ejecución local (solo para desarrollo del código)
 
 > Nota: la validación de este proyecto se hace contra producción (ver tabla de arriba), no localmente. Estos pasos son solo para quien vaya a modificar el código.

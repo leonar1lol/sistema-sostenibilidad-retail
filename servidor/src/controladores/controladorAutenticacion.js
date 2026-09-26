@@ -51,8 +51,8 @@ export const iniciarSesion = async (peticion, respuesta) => {
         unidad: usuario.unidad,
         permisos
       },
-      process.env.CLAVE_SECRETA_JWT || 'clave_secreta_jwt_sostenibilidad_retail_2026',
-      { expiresIn: '30d' }
+      process.env.CLAVE_SECRETA_JWT,
+      { expiresIn: '8h' }
     );
 
     await registrarAuditoria({ idUsuario: usuario.id_usuario, accion: 'Inicio de sesión exitoso' });
