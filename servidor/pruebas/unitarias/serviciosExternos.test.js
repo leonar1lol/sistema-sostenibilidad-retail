@@ -5,6 +5,10 @@ import {
   enviarRecordatorioEvaluacion,
   enviarReporteResultados
 } from '../../src/servicios/servicioCorreo.js';
+import {
+  subirArchivoR2,
+  eliminarArchivoR2
+} from '../../src/servicios/servicioR2.js';
 
 describe('Servicios Externos - Servicio de Correo Transaccional (Resend Mock)', () => {
   const fetchOriginal = global.fetch;
@@ -114,5 +118,17 @@ describe('Servicios Externos - Validacion de Archivos y Evidencias', () => {
     const resultado = validarArchivoEvidencia(archivoPesado);
     assert.equal(resultado.valido, false);
     assert.equal(resultado.mensaje, 'Supera el limite de 5 MB.');
+  });
+
+  it('falla explicitamente en produccion si Cloudflare R2 no esta configurado', async () => {
+    await assert.rejects(
+      async () => subirArchivoR2('test.pdf', Buffer.from('abc'), 'application/pdf', 'production'),
+      /Configuración de Cloudflare R2 no disponible o incompleta/
+    );
+
+    await assert.rejects(
+      async () => eliminarArchivoR2('test.pdf', 'production'),
+      /Configuración de Cloudflare R2 no disponible o incompleta/
+    );
   });
 });

@@ -73,6 +73,11 @@ export const verificarAcceso = async (peticion, respuesta) => {
         [correo.toLowerCase()]
       );
 
+      await registrarAuditoria({
+        accion: 'Validó acceso mediante código OTP',
+        cliente
+      });
+
       return { idCodigo: codigo.rows[0].id_codigo, proveedor: proveedor.rows[0] || null };
     });
 
@@ -219,12 +224,15 @@ export const registrarProveedor = async (peticion, respuesta) => {
         [idCampaniaResuelta, idProveedor, tokenEvaluacion]
       );
 
-      return { idProveedor, idEvaluacion: evaluacion.rows[0].idEvaluacion, estadoEvaluacion: evaluacion.rows[0].estado };
-    });
+      const idEvaluacion = evaluacion.rows[0].idEvaluacion;
 
-    await registrarAuditoria({
-      idEvaluacion: resultado.idEvaluacion,
-      accion: `Registro/actualización de proveedor RUC ${ruc} en el portal`
+      await registrarAuditoria({
+        idEvaluacion,
+        accion: `Registro/actualización de proveedor RUC ${ruc} en el portal`,
+        cliente
+      });
+
+      return { idProveedor, idEvaluacion, estadoEvaluacion: evaluacion.rows[0].estado };
     });
 
     const token = emitirTokenProveedor({
@@ -356,12 +364,20 @@ export const guardarRespuesta = async (peticion, respuesta) => {
       return respuesta.status(400).json({ exito: false, mensaje: 'La alternativa no corresponde al ítem indicado.' });
     }
 
-    await consultarBaseDatos(
-      `INSERT INTO respuesta (id_evaluacion, id_item, id_alternativa)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (id_evaluacion, id_item) DO UPDATE SET id_alternativa = EXCLUDED.id_alternativa, fecha = now()`,
-      [idEvaluacion, idItem, idAlternativa]
-    );
+    await ejecutarTransaccion(async (cliente) => {
+      await cliente.query(
+        `INSERT INTO respuesta (id_evaluacion, id_item, id_alternativa)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (id_evaluacion, id_item) DO UPDATE SET id_alternativa = EXCLUDED.id_alternativa, fecha = now()`,
+        [idEvaluacion, idItem, idAlternativa]
+      );
+
+      await registrarAuditoria({
+        idEvaluacion,
+        accion: `Actualizó respuesta del ítem #${idItem}`,
+        cliente
+      });
+    });
 
     return respuesta.status(200).json({ exito: true });
   } catch (error) {
@@ -426,6 +442,11 @@ export const finalizarEvaluacion = async (peticion, respuesta) => {
           [idEvaluacion, dimension.idDimension, dimension.puntaje]
         );
       }
+      await registrarAuditoria({
+        idEvaluacion,
+        accion: `Finalizó su evaluación con puntaje ${puntajeTotal}/100`,
+        cliente
+      });
     });
 
     let recomendaciones = [];
@@ -445,8 +466,6 @@ export const finalizarEvaluacion = async (peticion, respuesta) => {
       puntajeTotal,
       recomendaciones
     );
-
-    await registrarAuditoria({ idEvaluacion, accion: `Finalizó su evaluación con puntaje ${puntajeTotal}/100` });
 
     return respuesta.status(200).json({
       exito: true,

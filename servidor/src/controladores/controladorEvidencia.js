@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import multer from 'multer';
-import { consultarBaseDatos } from '../configuracion/baseDatos.js';
-import { subirArchivoR2, eliminarArchivoR2, generarUrlDescargaR2 } from '../servicios/servicioR2.js';
+import { consultarBaseDatos, ejecutarTransaccion } from '../configuracion/baseDatos.js';
+import { servicioR2 } from '../servicios/servicioR2.js';
+import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 
 const TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png'];
 const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
@@ -36,16 +37,36 @@ export const subirEvidenciaPortal = async (peticion, respuesta) => {
     const idRespuesta = respuestaFila.rows[0].idRespuesta;
 
     const claveR2 = `evidencias/${idEvaluacion}/${idRespuesta}/${crypto.randomUUID()}-${peticion.file.originalname}`;
-    await subirArchivoR2(claveR2, peticion.file.buffer, peticion.file.mimetype);
+    await servicioR2.subirArchivoR2(claveR2, peticion.file.buffer, peticion.file.mimetype);
 
-    const insertado = await consultarBaseDatos(
-      `INSERT INTO evidencia (id_respuesta, nombre_archivo, clave_r2, tipo_mime, tamano_bytes)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id_evidencia AS "idEvidencia", nombre_archivo AS "nombreArchivo", tipo_mime AS "tipoMime", tamano_bytes AS "tamanoBytes", subido_en AS "subidoEn"`,
-      [idRespuesta, peticion.file.originalname, claveR2, peticion.file.mimetype, peticion.file.size]
-    );
+    let evidenciaInsertada;
+    try {
+      evidenciaInsertada = await ejecutarTransaccion(async (cliente) => {
+        const resultado = await cliente.query(
+          `INSERT INTO evidencia (id_respuesta, nombre_archivo, clave_r2, tipo_mime, tamano_bytes)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id_evidencia AS "idEvidencia", nombre_archivo AS "nombreArchivo", tipo_mime AS "tipoMime", tamano_bytes AS "tamanoBytes", subido_en AS "subidoEn"`,
+          [idRespuesta, peticion.file.originalname, claveR2, peticion.file.mimetype, peticion.file.size]
+        );
 
-    return respuesta.status(201).json({ exito: true, evidencia: insertado.rows[0] });
+        await registrarAuditoria({
+          idEvaluacion,
+          accion: `Adjuntó evidencia al ítem #${idItem}`,
+          cliente
+        });
+
+        return resultado.rows[0];
+      });
+    } catch (errorTransaccion) {
+      try {
+        await servicioR2.eliminarArchivoR2(claveR2);
+      } catch (errorCompensacion) {
+        console.error('Error al compensar archivo en R2:', errorCompensacion);
+      }
+      throw errorTransaccion;
+    }
+
+    return respuesta.status(201).json({ exito: true, evidencia: evidenciaInsertada });
   } catch (error) {
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al subir la evidencia.' });
   }
@@ -76,7 +97,7 @@ export const eliminarEvidenciaPortal = async (peticion, respuesta) => {
 
   try {
     const fila = await consultarBaseDatos(
-      `SELECT e.id_evidencia AS "idEvidencia", e.clave_r2 AS "claveR2"
+      `SELECT e.id_evidencia AS "idEvidencia", e.clave_r2 AS "claveR2", r.id_item AS "idItem"
        FROM evidencia e
        JOIN respuesta r ON r.id_respuesta = e.id_respuesta
        WHERE e.id_evidencia = $1 AND r.id_evaluacion = $2`,
@@ -86,8 +107,20 @@ export const eliminarEvidenciaPortal = async (peticion, respuesta) => {
       return respuesta.status(404).json({ exito: false, mensaje: 'Evidencia no encontrada.' });
     }
 
-    await eliminarArchivoR2(fila.rows[0].claveR2);
-    await consultarBaseDatos('DELETE FROM evidencia WHERE id_evidencia = $1', [idEvidencia]);
+    await ejecutarTransaccion(async (cliente) => {
+      await cliente.query('DELETE FROM evidencia WHERE id_evidencia = $1', [idEvidencia]);
+      await registrarAuditoria({
+        idEvaluacion,
+        accion: `Eliminó evidencia del ítem #${fila.rows[0].idItem}`,
+        cliente
+      });
+    });
+
+    try {
+      await servicioR2.eliminarArchivoR2(fila.rows[0].claveR2);
+    } catch (errorR2) {
+      console.error('Error al eliminar archivo en R2 tras confirmacion:', errorR2);
+    }
 
     return respuesta.status(200).json({ exito: true });
   } catch (error) {
@@ -122,7 +155,7 @@ export const listarEvidenciaProveedorAdmin = async (peticion, respuesta) => {
 
     const conUrl = await Promise.all(evidencias.rows.map(async ({ claveR2, ...fila }) => ({
       ...fila,
-      urlDescarga: await generarUrlDescargaR2(claveR2, fila.nombreArchivo)
+      urlDescarga: await servicioR2.generarUrlDescargaR2(claveR2, fila.nombreArchivo)
     })));
 
     return respuesta.status(200).json({ exito: true, evidencias: conUrl });
