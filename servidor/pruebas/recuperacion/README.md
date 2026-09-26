@@ -368,3 +368,88 @@ Ubicadas en `servidor/pruebas/recuperacion/workflows/` (fuera de `.github/workfl
 ### F. Estado Formal del Requisito RNF09
 - **Entorno de Producción Operativa:** 🔴 **NO CUMPLE ACTUALMENTE** (Neon Free mantiene History Window de 6 horas; backups diarios programados bloqueados en la consola).
 - **Componentes Operacionales de la Aplicación:** 🟡 **PREPARADOS Y VALIDADOS EN ENTORNO LOCAL AISLADO** (pendientes de despliegue controlado de infraestructura cloud: creación de bucket R2, configuración de secrets y activación de workflows).
+
+---
+
+## 14. Adaptación Operacional a GitHub Actions Artifacts (Fase 7F-B)
+
+### A. Arquitectura Seleccionada Oficial ($0.00 USD)
+Tras la auditoría en vivo de Cloudflare que confirmó la exigencia de un checkout de suscripción con posible registro de método de pago, se descartó formalmente Cloudflare R2 para RNF09. La arquitectura oficial se redefine exclusivamente sobre el ecosistema nativo de GitHub:
+
+- **Repositorio Privado Exclusivo:** `sostenibilidad-retail-backups` (visibilidad PRIVATE).
+- **Orquestación:** GitHub Actions sobre ejecutores estándar `ubuntu-latest`.
+- **Almacenamiento de Respaldo:** GitHub Actions Artifacts cifrados mediante `actions/upload-artifact@v4`.
+- **Retención Automatizada:** `retention-days: 9` nativo (GitHub purga automáticamente los artefactos al cumplir 9 días sin requerir scripts externos).
+- **Base de Datos Operativa:** Neon PostgreSQL Free ($0.00 USD).
+
+### B. Descarte Formal de Cloudflare R2
+*«Alternativa descartada para RNF09 debido a requerir activación de suscripción / método de facturación, incompatible con la restricción operativa de costo adicional $0 del usuario.»*
+- Cloudflare Pages continúa operativo sirviendo el frontend sin alteraciones.
+- `clienteR2Backup.js` y `entradaPurgaBackup.js` permanecen en el repositorio clasificados formalmente como *backend de almacenamiento alternativo no utilizado*.
+
+### C. Desacoplamiento de Scripts y Directorio de Salida
+Los scripts de Node.js no realizan operaciones de red para subir archivos ni interactúan con APIs de almacenamiento. Su responsabilidad se delimita estrictamente a:
+1. **`crearBackupDiario.js`:** Genera `backup.enc` y `manifest.json` en `BACKUP_OUTPUT_DIR`.
+2. **`exportarJournal.js`:** Genera `journal.enc` y `manifest.json` en `BACKUP_OUTPUT_DIR`.
+3. **Workflow de GitHub Actions:** Es el único componente responsable de invocar `actions/upload-artifact@v4` con `retention-days: 9`.
+4. **Directorio configurable:** `BACKUP_OUTPUT_DIR` permite dirigir la salida a un directorio temporal seguro del runner (`${{ runner.temp }}/...`), garantizando que ningún archivo cifrado ni volcado se escriba dentro del árbol versionable del repositorio.
+
+### D. Plantillas de Workflow para el Repositorio Privado
+Ubicadas en `servidor/pruebas/recuperacion/workflows/` (no activas en el repositorio público):
+- [`backup-diario-github.yml.template`](file:///d:/Backup/Descargas/Curso%20Integrador%20Ii%20Sistemas/Software/plataforma-sostenibilidad-retail/servidor/pruebas/recuperacion/workflows/backup-diario-github.yml.template): Programación diaria a las 02:00 UTC; clona el repositorio público con `GITHUB_TOKEN` estándar (sin requerir Personal Access Tokens / PAT); ejecuta `entradaBackupDiario.js`; sube artefacto `backup-full-YYYY-MM-DD` con `retention-days: 9`.
+- [`journal-recuperacion-github.yml.template`](file:///d:/Backup/Descargas/Curso%20Integrador%20Ii%20Sistemas/Software/plataforma-sostenibilidad-retail/servidor/pruebas/recuperacion/workflows/journal-recuperacion-github.yml.template): Programación bi-horaria (`0 */2 * * *`); clona repositorio público; ejecuta `entradaExportarJournal.js`; sube artefacto `journal-YYYY-MM-DD-HH` con `retention-days: 9`.
+
+### E. Secretos de Repositorio Requeridos
+El diseño simplificado elimina la totalidad de credenciales de Cloudflare R2, requiriendo únicamente dos secretos alojados en el repositorio privado:
+1. `NEON_BACKUP_DATABASE_URL`: Cadena de conexión directa a PostgreSQL Neon (sin pooler).
+2. `BACKUP_ENCRYPTION_KEY`: Clave simétrica de 32 bytes para cifrado AES-256-GCM.
+
+### F. Análisis Conservador de Cuotas y Viabilidad a Largo Plazo
+- **Almacenamiento de Artefactos:**
+  - Valor mostrado en la cuenta auditada (GitHub Pro Edu): 2 GB (2,048 MB).
+  - Valor general publicado en GitHub Docs: 1 GB (GitHub Pro) / 500 MB (GitHub Free).
+  - Consumo proyectado para 9 días (9 backups full de ~33 MB + 108 journals bi-horarios): **~325 MB**.
+  - Ocupación: 15.8% (sobre 2 GB), 32.5% (sobre 1 GB) y 65.0% (sobre 500 MB de GitHub Free).
+  - **Independencia del beneficio Pro:** El mecanismo es plenamente viable incluso si la cuenta pasara al plan GitHub Free estándar (65% < 80% del umbral de alerta operacional).
+- **Minutos de Cómputo Actions:**
+  - Consumo proyectado: 1 backup + 12 journals diarios $\times$ 30 días $\approx$ 390 minutos/mes.
+  - Ocupación: 13.0% de los 3,000 min de Pro; 19.5% de los 2,000 min de Free.
+- **Garantía Económica:** Cuenta sin método de pago registrado y Spending Limit configurado en $0.00 con política *Stop usage*, impidiendo cualquier facturación imprevista.
+
+### G. Especificaciones Técnicas y Validaciones Fase 7F-B3
+
+1. **Requerimiento y Validación Estricta de `pg_dump` 18.x:**
+   - La base de datos de producción corre PostgreSQL 18.6 (Neon Serverless). PostgreSQL exige que la herramienta de volcado no sea de una versión mayor anterior a la del servidor.
+   - En la plantilla de workflow de respaldo se garantiza la versión 18 mediante la instalación de `postgresql-client-18` desde el repositorio oficial PGDG (`apt.postgresql.org`).
+   - Los scripts de respaldo implementan validación programática en Node.js (`validarVersionPgDumpMinimo18`) que inspecciona la salida de `pg_dump --version` y rechaza versiones anteriores a la 18 o salidas con formato corrupto.
+   - Se incorpora soporte para la variable de entorno `PG_DUMP_BIN`, permitiendo apuntar al binario exacto (`/usr/lib/postgresql/18/bin/pg_dump`).
+
+2. **Versiones Alineadas y Entorno de Ejecución en GitHub Actions:**
+   - `actions/checkout@v7`
+   - `actions/setup-node@v7` con `node-version: 20` (alineado con la versión LTS de Node.js utilizada en CI y desarrollo).
+   - `actions/upload-artifact@v4` (con política de retención nativa `retention-days: 9`).
+   - Paths de ejecución estandarizados mediante `working-directory: servidor` e invocación limpia `node scripts/respaldo/...`.
+   - Instalación de dependencias: `npm ci --omit=dev` en `working-directory: servidor` (instala las dependencias de producción declaradas en `servidor/package.json`, omitiendo devDependencies).
+   - En el workflow de journal no se instala el cliente PostgreSQL, ya que opera exclusivamente vía Node.js (`pg`).
+
+3. **Verificación de Herramientas de Construcción (Vite):**
+   - Versión real de Vite instalada: **5.4.21** (confirmada en `cliente/node_modules/vite` y `cliente/package-lock.json`).
+   - Resultado de compilación: `npm.cmd --prefix cliente run construir` finaliza con `EXIT_CODE=0`.
+   - Advertencia registrada (warning no bloqueante): `Some chunks are larger than 500 kB after minification` (`dist/assets/index-BUrSb5r6.js: 576.76 kB`), propia de la empaquetación monolítica sin code-splitting dinámico.
+
+4. **Resultados de la Suite Operacional Fase 7F (21 Verificaciones en 8 Escenarios Temáticos - 0 Fallos):**
+   - **Escenario 1 (Backup Diario):** Generación exacta de `backup.enc` + `manifest.json` y eliminación inmediata de archivos temporales plaintext: ✅ **3/3 verificaciones**
+   - **Escenario 2 (Journal Incremental):** Exportación incremental periódica de la bitácora transaccional en `journal.enc` + manifest: ✅ **2/2 verificaciones**
+   - **Escenario 3 (Integridad Criptográfica):** Validación de hash SHA-256 en manifest y detección inmediata de alteraciones/tampering: ✅ **3/3 verificaciones**
+   - **Escenario 4 (Autonomía de Almacenamiento):** Ejecución 100% exitosa sin variables de entorno ni dependencias de Cloudflare R2: ✅ **2/2 verificaciones**
+   - **Escenario 5 (Directorio Configurable):** Aislamiento de artefactos en `BACKUP_OUTPUT_DIR` sin contaminar el árbol del repositorio: ✅ **2/2 verificaciones**
+   - **Escenario 6 (Resiliencia ante Errores):** Manejo de fallos en volcado o cifrado garantizando cero fugas de archivos temporales: ✅ **3/3 verificaciones**
+   - **Escenario 7 (Validación de `pg_dump` 18):** Detección y aceptación de versiones 18.0 y 18.4; rechazo estricto de versiones obsoletas (17.2, 16.4) y formatos corruptos; verificación de resolución mediante `PG_DUMP_BIN`: ✅ **5/5 verificaciones**
+   - **Escenario 8 (Restauración End-to-End PITR):** Restauración completa a punto en el tiempo desde dump base + journal cifrado recuperando el estado exacto (`valorRestaurado = 'Proveedor 7F Modificado'`): ✅ **1/1 verificación**
+
+### H. Matriz de Cumplimiento Actualizada
+- **Entorno de Producción Operativa:**  
+  🔴 **NO CUMPLE ACTUALMENTE**  
+  *(Neon Free mantiene History Window nativa de 6 horas; el repositorio privado y los workflows aún no han sido creados ni activados).*
+- **Arquitectura de Costo Cero ($0.00 USD):**  
+  🟡 **PROTOTIPO OPERACIONAL ADAPTADO A GITHUB ARTIFACTS Y VALIDADO LOCALMENTE (21/21 verificaciones en 8 escenarios temáticos - 0 fallos)**.

@@ -1,14 +1,13 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createReadStream, createWriteStream, existsSync, unlinkSync } from 'node:fs';
+import { existsSync, unlinkSync, mkdirSync, writeFileSync } from 'node:fs';
 import { readFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
-import { cifrarContenido } from '../pruebas/recuperacion/servicioCifradoBackup.js';
-import { generarManifest, validarManifest } from '../pruebas/recuperacion/servicioManifest.js';
-import { subirObjetoBackup } from './clienteR2Backup.js';
+import { cifrarContenido } from '../../pruebas/recuperacion/servicioCifradoBackup.js';
+import { generarManifest, validarManifest } from '../../pruebas/recuperacion/servicioManifest.js';
 
 const ejecutarComando = promisify(execFile);
 
@@ -20,14 +19,12 @@ function obtenerUrlBasesDatos() {
   return url;
 }
 
-function construirClaveFull(fecha) {
-  const d = fecha.toISOString().slice(0, 10);
-  return `database-backups/full/${d}/backup.enc`;
-}
-
-function construirClaveManifest(fecha) {
-  const d = fecha.toISOString().slice(0, 10);
-  return `database-backups/full/${d}/manifest.json`;
+function resolverDirectorioSalida(directorioParametro) {
+  const dir = directorioParametro ?? process.env.BACKUP_OUTPUT_DIR ?? join(tmpdir(), 'sostenibilidad-backup-salida');
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  return dir;
 }
 
 async function obtenerVersionPostgres(clienteCoord) {
@@ -35,7 +32,42 @@ async function obtenerVersionPostgres(clienteCoord) {
   return res.rows[0].v;
 }
 
+export function parsearVersionPgDump(cadenaVersion) {
+  if (!cadenaVersion || typeof cadenaVersion !== 'string') {
+    throw new Error('Salida de versión de pg_dump inválida o vacía.');
+  }
+  const coincidencia = cadenaVersion.match(/pg_dump\s+\(PostgreSQL\)\s+(\d+)(?:\.(\d+))?/i);
+  if (!coincidencia) {
+    throw new Error(`No se pudo determinar la versión de pg_dump a partir de la salida: "${cadenaVersion.trim()}"`);
+  }
+  const versionMayor = parseInt(coincidencia[1], 10);
+  const versionMenor = coincidencia[2] ? parseInt(coincidencia[2], 10) : 0;
+  return { versionMayor, versionMenor, versionCompleta: `${versionMayor}.${versionMenor}` };
+}
+
+export function validarVersionPgDumpMinimo18(cadenaVersion) {
+  const { versionMayor, versionCompleta } = parsearVersionPgDump(cadenaVersion);
+  if (versionMayor < 18) {
+    throw new Error(`Versión de pg_dump incompatible: se detectó versión ${versionCompleta}, pero se requiere como mínimo PostgreSQL 18.x para coincidir con el motor de Neon.`);
+  }
+  return true;
+}
+
+export const validarVersionPgDumpMayor18 = validarVersionPgDumpMinimo18;
+
+export function obtenerBinarioPgDump() {
+  return process.env.PG_DUMP_BIN ?? 'pg_dump';
+}
+
+export async function verificarBinarioPgDump18(binario = obtenerBinarioPgDump()) {
+  const { stdout } = await ejecutarComando(binario, ['--version']);
+  return validarVersionPgDumpMinimo18(stdout);
+}
+
 async function ejecutarPgDump(databaseUrl, snapshotId, rutaSalida) {
+  const binario = obtenerBinarioPgDump();
+  await verificarBinarioPgDump18(binario);
+
   const parsedUrl = new URL(databaseUrl);
   const args = [
     '--snapshot', snapshotId,
@@ -45,7 +77,7 @@ async function ejecutarPgDump(databaseUrl, snapshotId, rutaSalida) {
     databaseUrl
   ];
 
-  const resultado = await ejecutarComando('pg_dump', args, {
+  const resultado = await ejecutarComando(binario, args, {
     env: { ...process.env, PGPASSWORD: parsedUrl.password },
     timeout: 5 * 60 * 1000
   });
@@ -53,7 +85,12 @@ async function ejecutarPgDump(databaseUrl, snapshotId, rutaSalida) {
   return resultado;
 }
 
-export async function ejecutarBackupDiario({ claveEncriptado, subirAR2 = true, generadorDumpPersonalizado = null } = {}) {
+function determinarSsl(url) {
+  const esLocal = url.includes('localhost') || url.includes('127.0.0.1') || process.env.DESHABILITAR_SSL === 'true';
+  return esLocal ? false : { rejectUnauthorized: false };
+}
+
+export async function ejecutarBackupDiario({ claveEncriptado, directorioSalida = null, generadorDumpPersonalizado = null } = {}) {
   const databaseUrl = obtenerUrlBasesDatos();
   const clave = claveEncriptado ?? process.env.BACKUP_ENCRYPTION_KEY;
 
@@ -61,10 +98,10 @@ export async function ejecutarBackupDiario({ claveEncriptado, subirAR2 = true, g
     throw new Error('La variable de entorno BACKUP_ENCRYPTION_KEY es obligatoria para el backup.');
   }
 
-  const fechaBackup = new Date();
+  const dirDestino = resolverDirectorioSalida(directorioSalida);
   const rutaTemporal = join(tmpdir(), `dump_${randomBytes(8).toString('hex')}.sql`);
 
-  const clienteCoord = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+  const clienteCoord = new Client({ connectionString: databaseUrl, ssl: determinarSsl(databaseUrl) });
   await clienteCoord.connect();
 
   let snapshotId;
@@ -115,12 +152,19 @@ export async function ejecutarBackupDiario({ claveEncriptado, subirAR2 = true, g
     throw new Error(`Validación SHA-256 del manifest fallida: ${errores.join('; ')}`);
   }
 
-  if (subirAR2) {
-    const claveBackup = construirClaveFull(fechaBackup);
-    const claveManif = construirClaveManifest(fechaBackup);
-    await subirObjetoBackup(claveBackup, bufferCifrado);
-    await subirObjetoBackup(claveManif, Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
-  }
+  const rutaBackupEnc = join(dirDestino, 'backup.enc');
+  const rutaManifestJson = join(dirDestino, 'manifest.json');
 
-  return { manifest, tamanoBytes: bufferCifrado.length, snapshotId, snapshotMvcc };
+  writeFileSync(rutaBackupEnc, bufferCifrado);
+  writeFileSync(rutaManifestJson, JSON.stringify(manifest, null, 2), 'utf8');
+
+  return {
+    manifest,
+    tamanoBytes: bufferCifrado.length,
+    snapshotId,
+    snapshotMvcc,
+    directorioSalida: dirDestino,
+    rutaBackupEnc,
+    rutaManifestJson
+  };
 }

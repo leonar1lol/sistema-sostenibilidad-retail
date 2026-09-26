@@ -26,10 +26,10 @@ export async function restaurarAPuntoEnElTiempo({
   await clienteDestino.query(contenidoSqlBase);
 
   const mapaEventosPorId = new Map();
-
   for (const paqueteJournal of listaPaquetesJournalCifrados) {
     const jsonJournalTexto = descifrarContenido(paqueteJournal, claveCifrado).toString('utf8');
-    const listaEventos = JSON.parse(jsonJournalTexto);
+    const datosParseados = JSON.parse(jsonJournalTexto);
+    const listaEventos = Array.isArray(datosParseados) ? datosParseados : (datosParseados.eventos ?? []);
     for (const evento of listaEventos) {
       if (!mapaEventosPorId.has(evento.id_registro)) {
         mapaEventosPorId.set(evento.id_registro, evento);

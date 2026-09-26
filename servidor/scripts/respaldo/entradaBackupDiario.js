@@ -1,18 +1,16 @@
 import { ejecutarBackupDiario } from './crearBackupDiario.js';
-import { eliminarObjetosVencidos } from './clienteR2Backup.js';
 
 async function principal() {
-  const resultado = await ejecutarBackupDiario({ subirAR2: true });
-  console.log('Backup diario completado.');
+  const resultado = await ejecutarBackupDiario();
+  console.log('Backup diario generado con éxito para artefacto de GitHub Actions.');
+  console.log('Directorio de salida:', resultado.directorioSalida);
   console.log('Snapshot MVCC:', resultado.snapshotMvcc);
-  console.log('Tamano cifrado (bytes):', resultado.tamanoBytes);
+  console.log('Tamaño cifrado (bytes):', resultado.tamanoBytes);
+  console.log('SHA-256 del dump cifrado:', resultado.manifest.sha256DumpCifrado);
   console.log('Fecha backup:', resultado.manifest.fechaBackup);
-
-  const purga = await eliminarObjetosVencidos(9);
-  console.log(`Purga completada. Objetos eliminados: ${purga.eliminados}`);
 }
 
 principal().catch(err => {
-  console.error('Error en backup diario:', err.message);
+  console.error('Error durante la generación del backup diario:', err.message);
   process.exit(1);
 });
