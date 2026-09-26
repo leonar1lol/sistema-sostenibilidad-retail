@@ -310,3 +310,61 @@ El hash SHA-256 del dump cifrado complementa el Auth Tag de AES-256-GCM: el Auth
 3. `track_commit_timestamp = OFF` en ambos entornos (PostgreSQL 18.4 local y Neon Free 18.6); `pg_xact_commit_timestamp()` no disponible.
 4. `session_replication_role = 'replica'` bloqueado en Neon Free; se usa `sostenibilidad.modo_recuperacion` como alternativa sin requerir superusuario.
 5. Todas las restricciones del esquema son `NOT DEFERRABLE`; el restore exige orden topológico estricto de dependencias.
+
+---
+
+## 13. Preparación Operacional (Fase 7E)
+
+### A. Scripts Operacionales Creados
+Se han preparado los componentes operacionales para la ejecución en producción sin haberlos ejecutado contra recursos cloud (aislamiento estricto):
+
+1. **`clienteR2Backup.js`:**
+   - Cliente específico para backups basado en `@aws-sdk/client-s3`.
+   - Espacio de claves exclusivo: `database-backups/`.
+   - Métodos: `subirObjetoBackup`, `descargarObjetoBackup`, `listarObjetosBackup`, `eliminarObjetosVencidos`.
+   - Protección estricta: lanza error si se intenta operar fuera del prefijo `database-backups/`.
+   - Variables de entorno: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_BACKUP`.
+
+2. **`crearBackupDiario.js`:**
+   - Abre conexión coordinadora y ejecuta `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;`.
+   - Captura `pg_export_snapshot()` y `pg_current_snapshot()`.
+   - Ejecuta `pg_dump` con el parámetro `--snapshot`.
+   - Cifra el contenido con AES-256-GCM.
+   - Genera manifest JSON con SHA-256 del dump cifrado.
+   - Elimina inmediatamente el archivo temporal plaintext.
+   - Cierra la transacción coordinadora con `COMMIT;`.
+   - Sube `backup.enc` y `manifest.json` a `database-backups/full/YYYY-MM-DD/`.
+
+3. **`exportarJournal.js`:**
+   - Consulta incremental de la tabla `registro_recuperacion` en una ventana de 2 horas.
+   - Incluye `id_registro`, `nombre_tabla`, `operacion`, `xid_transaccion`, `fecha_cierre_transaccion_aprox`, `datos_anteriores`, `datos_nuevos`.
+   - Cifra con AES-256-GCM.
+   - Sube a `database-backups/journal/YYYY-MM-DD/HH.enc` y `manifest.json`.
+
+### B. Condición Operativa sobre `SET CONSTRAINTS ... IMMEDIATE`
+Las escrituras de producción son realizadas por la aplicación y sus servicios controlados, los cuales no ejecutan `SET CONSTRAINTS ... IMMEDIATE`. El uso de dicha instrucción mediante accesos directos administrativos queda fuera del procedimiento normal de operación.
+
+### C. Aclaración de Integridad del Manifest
+- **SHA-256:** Permite la verificación operativa del objeto cifrado (detecta corrupción o alteraciones del dump cuando el manifest permanece intacto).
+- **AES-256-GCM Auth Tag:** Garantiza la integridad y autenticidad criptográfica del contenido cifrado frente a cualquier manipulación, validado durante el descifrado.
+
+### D. Plantillas de GitHub Actions (No Activas)
+Ubicadas en `servidor/pruebas/recuperacion/workflows/` (fuera de `.github/workflows/` para evitar ejecución accidental):
+- `backup-diario.yml.template`: Programación diaria a las 02:00 UTC con `ubuntu-latest`.
+- `journal-recuperacion.yml.template`: Programación bi-horaria (`0 */2 * * *`) con `ubuntu-latest`.
+- Referencian exclusivamente secrets de repositorio: `NEON_BACKUP_DATABASE_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_BACKUP`, `BACKUP_ENCRYPTION_KEY`.
+
+### E. Resultados de la Suite Operacional (Entorno Local Aislado)
+- Creación de backup cifrado: ✅
+- Eliminación de archivo temporal plaintext: ✅
+- Manifest SHA-256 validado: ✅
+- Exportación incremental de journal: ✅
+- Purga de objetos vencidos (>9 días): ✅ (0 eliminados para objetos recientes)
+- Protección contra operaciones fuera del prefijo `database-backups/`: ✅
+- Manejo de error en `pg_dump`: ✅
+- Manejo de error en upload: ✅
+- **Restore end-to-end operacional a punto en el tiempo:** ✅ (estado recuperado exactamente igual al valor confirmado en el TARGET_TIME: `'Proveedor Modificado'`).
+
+### F. Estado Formal del Requisito RNF09
+- **Entorno de Producción Operativa:** 🔴 **NO CUMPLE ACTUALMENTE** (Neon Free mantiene History Window de 6 horas; backups diarios programados bloqueados en la consola).
+- **Componentes Operacionales de la Aplicación:** 🟡 **PREPARADOS Y VALIDADOS EN ENTORNO LOCAL AISLADO** (pendientes de despliegue controlado de infraestructura cloud: creación de bucket R2, configuración de secrets y activación de workflows).
