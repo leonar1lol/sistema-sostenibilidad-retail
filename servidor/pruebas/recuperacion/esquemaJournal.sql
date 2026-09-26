@@ -100,8 +100,10 @@ AFTER INSERT OR UPDATE OR DELETE ON proveedor
 FOR EACH ROW EXECUTE FUNCTION fn_registrar_cambio_recuperacion('id_proveedor');
 
 DROP TRIGGER IF EXISTS trg_cierre_proveedor ON proveedor;
-CREATE CONSTRAINT TRIGGER trg_cierre_proveedor
-AFTER INSERT OR UPDATE OR DELETE ON proveedor
+DROP TRIGGER IF EXISTS trg_cierre_evaluacion ON evaluacion;
+DROP TRIGGER IF EXISTS trg_cierre_registro_recuperacion ON registro_recuperacion;
+CREATE CONSTRAINT TRIGGER trg_cierre_registro_recuperacion
+AFTER INSERT ON registro_recuperacion
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION fn_marcar_cierre_transaccion();
 
@@ -109,12 +111,6 @@ DROP TRIGGER IF EXISTS trg_recup_evaluacion ON evaluacion;
 CREATE TRIGGER trg_recup_evaluacion
 AFTER INSERT OR UPDATE OR DELETE ON evaluacion
 FOR EACH ROW EXECUTE FUNCTION fn_registrar_cambio_recuperacion('id_evaluacion');
-
-DROP TRIGGER IF EXISTS trg_cierre_evaluacion ON evaluacion;
-CREATE CONSTRAINT TRIGGER trg_cierre_evaluacion
-AFTER INSERT OR UPDATE OR DELETE ON evaluacion
-DEFERRABLE INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION fn_marcar_cierre_transaccion();
 
 DROP TRIGGER IF EXISTS trg_recup_respuesta ON respuesta;
 CREATE TRIGGER trg_recup_respuesta

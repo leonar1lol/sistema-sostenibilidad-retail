@@ -301,13 +301,86 @@ export async function ejecutarPruebasOperacionales7F() {
 
   resultados.validacionVersionPgDump = version18LinuxValida && version18WinValida && error17Rechazado && error16Rechazado && errorInvalidoRechazado;
 
+  console.log('\n─────────────────────────────────────────────────────────────');
+  console.log('PRUEBA W: COBERTURA UNIVERSAL DE CIERRE TRANSACCIONAL (FASE 7F-D2)');
+  console.log('─────────────────────────────────────────────────────────────');
+
+  const cliTx = new Client({ connectionString: URL_BASE_ORIGEN, ssl: false });
+  await cliTx.connect();
+
+  // Escenario A: item-only
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO item (codigo, enunciado, peso, id_dimension) VALUES ('ITM_TEST_7F', 'Pregunta Test Item 7F', 1.0, 1);");
+  await cliTx.query('COMMIT;');
+  const resItem = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla = 'item' ORDER BY id_registro DESC LIMIT 1;");
+  const cierreItemOk = resItem.rows[0]?.fecha_cierre_transaccion_aprox !== null && resItem.rows[0]?.fecha_cierre_transaccion_aprox !== undefined;
+  ok(cierreItemOk, 'Escenario A: Transacción que modifica SOLO item obtiene fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario B: usuario-only
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO usuario (correo, nombre, clave_hash, id_rol, id_unidad) VALUES ('user7f_d2@test.pe', 'Usuario Test 7F D2', 'hash_test', 1, 1);");
+  await cliTx.query('COMMIT;');
+  const resUser = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla = 'usuario' ORDER BY id_registro DESC LIMIT 1;");
+  const cierreUserOk = resUser.rows[0]?.fecha_cierre_transaccion_aprox !== null && resUser.rows[0]?.fecha_cierre_transaccion_aprox !== undefined;
+  ok(cierreUserOk, 'Escenario B: Transacción que modifica SOLO usuario obtiene fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario C: rol-only
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO rol (nombre) VALUES ('Rol Test 7F D2');");
+  await cliTx.query('COMMIT;');
+  const resRol = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla = 'rol' ORDER BY id_registro DESC LIMIT 1;");
+  const cierreRolOk = resRol.rows[0]?.fecha_cierre_transaccion_aprox !== null && resRol.rows[0]?.fecha_cierre_transaccion_aprox !== undefined;
+  ok(cierreRolOk, 'Escenario C: Transacción que modifica SOLO rol obtiene fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario D: proveedor
+  await cliTx.query('BEGIN;');
+  await cliTx.query("UPDATE proveedor SET razon_social = 'Proveedor Test D2' WHERE ruc = '20222222222';");
+  await cliTx.query('COMMIT;');
+  const resProv = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla = 'proveedor' ORDER BY id_registro DESC LIMIT 1;");
+  const cierreProvOk = resProv.rows[0]?.fecha_cierre_transaccion_aprox !== null && resProv.rows[0]?.fecha_cierre_transaccion_aprox !== undefined;
+  ok(cierreProvOk, 'Escenario D: Transacción que modifica proveedor obtiene fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario E: evaluacion
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO evaluacion (id_campania, id_proveedor, token, estado) VALUES (1, 1, 'token_d2_test', 'En proceso');");
+  await cliTx.query('COMMIT;');
+  const resEval = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla = 'evaluacion' ORDER BY id_registro DESC LIMIT 1;");
+  const cierreEvalOk = resEval.rows[0]?.fecha_cierre_transaccion_aprox !== null && resEval.rows[0]?.fecha_cierre_transaccion_aprox !== undefined;
+  ok(cierreEvalOk, 'Escenario E: Transacción que modifica evaluacion obtiene fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario F: multitabla en una sola transacción
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO industria (codigo, nombre) VALUES ('IND_D2', 'Industria 7F D2');");
+  await cliTx.query("INSERT INTO dimension (codigo, nombre, peso) VALUES ('DIM_D2', 'Dimension 7F D2', 0.200);");
+  await cliTx.query('COMMIT;');
+  const resMulti = await cliTx.query("SELECT fecha_cierre_transaccion_aprox FROM registro_recuperacion WHERE nombre_tabla IN ('industria', 'dimension') AND fecha_cierre_transaccion_aprox IS NOT NULL;");
+  const cierreMultiOk = resMulti.rows.length >= 2;
+  ok(cierreMultiOk, 'Escenario F: Transacción multitabla cierra todas sus filas con fecha_cierre_transaccion_aprox NOT NULL');
+
+  // Escenario G: ROLLBACK
+  await cliTx.query('BEGIN;');
+  await cliTx.query("INSERT INTO unidad_negocio (codigo, nombre) VALUES ('UN_AB_D2', 'Unidad Abortada D2');");
+  await cliTx.query('ROLLBACK;');
+  const resRollback = await cliTx.query("SELECT count(*) as c FROM registro_recuperacion WHERE nombre_tabla = 'unidad_negocio' AND datos_nuevos->>'codigo' = 'UN_AB_D2';");
+  const rollbackOk = resRollback.rows[0].c === '0';
+  ok(rollbackOk, 'Escenario G: ROLLBACK no persiste filas de journal de transacciones abortadas');
+
+  // Escenario H: Ausencia total de nulos en registro_recuperacion
+  const resNullCheck = await cliTx.query("SELECT count(*) as c FROM registro_recuperacion WHERE fecha_cierre_transaccion_aprox IS NULL;");
+  const ceroNulosOk = resNullCheck.rows[0].c === '0';
+  ok(ceroNulosOk, 'Escenario H: Cero filas con fecha_cierre_transaccion_aprox NULL en todo registro_recuperacion');
+
+  await cliTx.end();
+
+  resultados.coberturaUniversalCierre = cierreItemOk && cierreUserOk && cierreRolOk && cierreProvOk && cierreEvalOk && cierreMultiOk && rollbackOk && ceroNulosOk;
+
   console.log('\n══════════════════════════════════════════════════════════════');
   console.log('RESUMEN DE PRUEBAS OPERACIONALES FASE 7F-B');
   console.log('══════════════════════════════════════════════════════════════');
 
   const todosPasan = Object.values(resultados).every(Boolean);
   const totalEscenarios = Object.keys(resultados).length;
-  console.log(`\nVEREDICTO GENERAL: ${todosPasan ? `✅ 21 VERIFICACIONES APROBADAS EN ${totalEscenarios} ESCENARIOS (0 FALLOS)` : '❌ ALGUNA PRUEBA FALLA'}`);
+  console.log(`\nVEREDICTO GENERAL: ${todosPasan ? `✅ 29 VERIFICACIONES APROBADAS EN ${totalEscenarios} ESCENARIOS (0 FALLOS)` : '❌ ALGUNA PRUEBA FALLA'}`);
   console.log('Detalle de resultados por escenario:', JSON.stringify(resultados, null, 2));
 
   return { todosPasan, totalEscenarios, resultados };
