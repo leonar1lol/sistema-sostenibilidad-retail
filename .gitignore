@@ -37,3 +37,9 @@ dist-ssr
 
 # Reportes exportados manualmente durante pruebas (pueden caer en la raíz por el navegador)
 /Reporte_Proveedores_*.csv
+
+# Archivos de configuracion de entorno de desarrollo local
+GEMINI.md
+AGENTS.md
+.agents/
+
