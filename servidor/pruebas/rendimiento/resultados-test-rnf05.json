@@ -1,0 +1,302 @@
+[
+  {
+    "endpointId": "SALUD",
+    "endpointRuta": "/api/salud",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "A",
+    "escenarioNombre": "Línea Base (Mono-conexión)",
+    "conexionesConcurrentes": 1,
+    "duracionSegundos": 10,
+    "totalPeticiones": 75405,
+    "peticionesPorSegundo": 6856,
+    "latenciaPromedioMs": 0.01,
+    "latenciaP50Ms": 0,
+    "latenciaP90Ms": 0,
+    "latenciaP97_5Ms": 0,
+    "latenciaP99Ms": 0,
+    "latenciaMaximaMs": 6,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 75405
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "SALUD",
+    "endpointRuta": "/api/salud",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "B",
+    "escenarioNombre": "Carga Ligera (Concurrencia Reducida)",
+    "conexionesConcurrentes": 5,
+    "duracionSegundos": 15,
+    "totalPeticiones": 134666,
+    "peticionesPorSegundo": 8978,
+    "latenciaPromedioMs": 0.03,
+    "latenciaP50Ms": 0,
+    "latenciaP90Ms": 0,
+    "latenciaP97_5Ms": 0,
+    "latenciaP99Ms": 1,
+    "latenciaMaximaMs": 11,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 134666
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "SALUD",
+    "endpointRuta": "/api/salud",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "C",
+    "escenarioNombre": "Carga Normal Formal — Criterio RNF05",
+    "conexionesConcurrentes": 20,
+    "duracionSegundos": 30,
+    "totalPeticiones": 254796,
+    "peticionesPorSegundo": 8493,
+    "latenciaPromedioMs": 1.87,
+    "latenciaP50Ms": 2,
+    "latenciaP90Ms": 2,
+    "latenciaP97_5Ms": 3,
+    "latenciaP99Ms": 3,
+    "latenciaMaximaMs": 17,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 254796
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "MONITOREO_BD",
+    "endpointRuta": "/api/sistema/monitoreo-bd",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "A",
+    "escenarioNombre": "Línea Base (Mono-conexión)",
+    "conexionesConcurrentes": 1,
+    "duracionSegundos": 10,
+    "totalPeticiones": 37167,
+    "peticionesPorSegundo": 3379,
+    "latenciaPromedioMs": 0.01,
+    "latenciaP50Ms": 0,
+    "latenciaP90Ms": 0,
+    "latenciaP97_5Ms": 0,
+    "latenciaP99Ms": 0,
+    "latenciaMaximaMs": 46,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 37167
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "MONITOREO_BD",
+    "endpointRuta": "/api/sistema/monitoreo-bd",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "B",
+    "escenarioNombre": "Carga Ligera (Concurrencia Reducida)",
+    "conexionesConcurrentes": 5,
+    "duracionSegundos": 15,
+    "totalPeticiones": 71303,
+    "peticionesPorSegundo": 4754,
+    "latenciaPromedioMs": 0.6,
+    "latenciaP50Ms": 1,
+    "latenciaP90Ms": 1,
+    "latenciaP97_5Ms": 1,
+    "latenciaP99Ms": 1,
+    "latenciaMaximaMs": 72,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 71303
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "MONITOREO_BD",
+    "endpointRuta": "/api/sistema/monitoreo-bd",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "C",
+    "escenarioNombre": "Carga Normal Formal — Criterio RNF05",
+    "conexionesConcurrentes": 20,
+    "duracionSegundos": 30,
+    "totalPeticiones": 151343,
+    "peticionesPorSegundo": 5045,
+    "latenciaPromedioMs": 3.45,
+    "latenciaP50Ms": 3,
+    "latenciaP90Ms": 4,
+    "latenciaP97_5Ms": 5,
+    "latenciaP99Ms": 5,
+    "latenciaMaximaMs": 91,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 151343
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "DATOS_MAESTROS",
+    "endpointRuta": "/api/proveedores/datos-maestros",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "A",
+    "escenarioNombre": "Línea Base (Mono-conexión)",
+    "conexionesConcurrentes": 1,
+    "duracionSegundos": 10,
+    "totalPeticiones": 19174,
+    "peticionesPorSegundo": 1917,
+    "latenciaPromedioMs": 0.01,
+    "latenciaP50Ms": 0,
+    "latenciaP90Ms": 0,
+    "latenciaP97_5Ms": 0,
+    "latenciaP99Ms": 0,
+    "latenciaMaximaMs": 10,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 19174
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "DATOS_MAESTROS",
+    "endpointRuta": "/api/proveedores/datos-maestros",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "B",
+    "escenarioNombre": "Carga Ligera (Concurrencia Reducida)",
+    "conexionesConcurrentes": 5,
+    "duracionSegundos": 15,
+    "totalPeticiones": 54741,
+    "peticionesPorSegundo": 3650,
+    "latenciaPromedioMs": 1.03,
+    "latenciaP50Ms": 1,
+    "latenciaP90Ms": 1,
+    "latenciaP97_5Ms": 2,
+    "latenciaP99Ms": 2,
+    "latenciaMaximaMs": 87,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 54741
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "DATOS_MAESTROS",
+    "endpointRuta": "/api/proveedores/datos-maestros",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "C",
+    "escenarioNombre": "Carga Normal Formal — Criterio RNF05",
+    "conexionesConcurrentes": 20,
+    "duracionSegundos": 30,
+    "totalPeticiones": 101146,
+    "peticionesPorSegundo": 3372,
+    "latenciaPromedioMs": 5.43,
+    "latenciaP50Ms": 5,
+    "latenciaP90Ms": 7,
+    "latenciaP97_5Ms": 8,
+    "latenciaP99Ms": 9,
+    "latenciaMaximaMs": 103,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 101146
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "PROVEEDORES_AUTH",
+    "endpointRuta": "/api/proveedores",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "A",
+    "escenarioNombre": "Línea Base (Mono-conexión)",
+    "conexionesConcurrentes": 1,
+    "duracionSegundos": 10,
+    "totalPeticiones": 8097,
+    "peticionesPorSegundo": 810,
+    "latenciaPromedioMs": 0.93,
+    "latenciaP50Ms": 1,
+    "latenciaP90Ms": 1,
+    "latenciaP97_5Ms": 1,
+    "latenciaP99Ms": 1,
+    "latenciaMaximaMs": 14,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 8097
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "PROVEEDORES_AUTH",
+    "endpointRuta": "/api/proveedores",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "B",
+    "escenarioNombre": "Carga Ligera (Concurrencia Reducida)",
+    "conexionesConcurrentes": 5,
+    "duracionSegundos": 15,
+    "totalPeticiones": 28335,
+    "peticionesPorSegundo": 1889,
+    "latenciaPromedioMs": 2.18,
+    "latenciaP50Ms": 2,
+    "latenciaP90Ms": 3,
+    "latenciaP97_5Ms": 4,
+    "latenciaP99Ms": 5,
+    "latenciaMaximaMs": 135,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 28335
+      }
+    },
+    "cumpleRnf05": true
+  },
+  {
+    "endpointId": "PROVEEDORES_AUTH",
+    "endpointRuta": "/api/proveedores",
+    "entorno": "TEST_AISLADO",
+    "escenarioCodigo": "C",
+    "escenarioNombre": "Carga Normal Formal — Criterio RNF05",
+    "conexionesConcurrentes": 20,
+    "duracionSegundos": 30,
+    "totalPeticiones": 56665,
+    "peticionesPorSegundo": 1889,
+    "latenciaPromedioMs": 10.09,
+    "latenciaP50Ms": 10,
+    "latenciaP90Ms": 11,
+    "latenciaP97_5Ms": 13,
+    "latenciaP99Ms": 16,
+    "latenciaMaximaMs": 160,
+    "erroresTotal": 0,
+    "porcentajeErrores": 0,
+    "distribucionEstados": {
+      "200": {
+        "count": 56665
+      }
+    },
+    "cumpleRnf05": true
+  }
+]

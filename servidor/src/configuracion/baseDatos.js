@@ -9,9 +9,13 @@ dotenv.config({ path: path.resolve(directorioActual, '../../.env') });
 
 const { Pool } = pkg;
 
+const requiereSsl = !process.env.URL_BASE_DATOS?.includes('localhost') &&
+                    !process.env.URL_BASE_DATOS?.includes('127.0.0.1') &&
+                    process.env.DESHABILITAR_SSL !== 'true';
+
 export const grupoConexiones = new Pool({
   connectionString: process.env.URL_BASE_DATOS,
-  ssl: { rejectUnauthorized: false }
+  ssl: requiereSsl ? { rejectUnauthorized: false } : false
 });
 
 export const consultarBaseDatos = (textoConsulta, parametros) => {
