@@ -3,7 +3,7 @@ steps:
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api', './servidor']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api']
-  - name: 'gcr.io/google-cloud-sdk/slim'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     entrypoint: gcloud
     args: ['run', 'deploy', 'plataforma-sostenibilidad-api', '--image=gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api', '--region=us-east1']
 images:
