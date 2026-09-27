@@ -25,12 +25,17 @@ import {
   exportarAnalisisBrechasExcel
 } from '../../utilidades/generadorReportesExcel.js';
 import VisorReportePdf from '../../componentes/VisorReportePdf.jsx';
-import { listarAuditoriaApi } from '../../servicios/servicioApi.js';
+import { listarAuditoriaApi, listarIndustriasApi, listarCampaniasApi } from '../../servicios/servicioApi.js';
 
 export default function CentroReportes({ proveedores = [], unidades = [] }) {
   const [unidadFiltro, setUnidadFiltro] = useState('Todas');
   const [estadoFiltro, setEstadoFiltro] = useState('Todos');
+  const [industriaFiltro, setIndustriaFiltro] = useState('Todas');
+  const [dimensionFiltro, setDimensionFiltro] = useState('Todas');
+  const [periodoFiltro, setPeriodoFiltro] = useState('Todas');
   const [busqueda, setBusqueda] = useState('');
+  const [industrias, setIndustrias] = useState([]);
+  const [campanias, setCampanias] = useState([]);
   const [proveedorCertificadoId, setProveedorCertificadoId] = useState('');
   const [notificacion, setNotificacion] = useState('');
   const [visorAbierto, setVisorAbierto] = useState(false);
@@ -41,6 +46,7 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
 
   useEffect(() => {
     cargarAuditoria();
+    cargarIndustriasCampanias();
   }, []);
 
   useEffect(() => {
@@ -59,17 +65,47 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
     }
   };
 
+  const cargarIndustriasCampanias = async () => {
+    try {
+      const [listaIndustrias, listaCampanias] = await Promise.all([
+        listarIndustriasApi(),
+        listarCampaniasApi()
+      ]);
+      setIndustrias(Array.isArray(listaIndustrias) ? listaIndustrias : []);
+      setCampanias(Array.isArray(listaCampanias) ? listaCampanias : []);
+    } catch {
+      setIndustrias([]);
+      setCampanias([]);
+    }
+  };
+
   const listaNombresUnidades = unidades.map(u => (typeof u === 'string' ? u : u.nombre || u.nombreUnidad)).filter(Boolean);
+
+  const listaPeriodos = campanias
+    .map(c => c.periodo)
+    .filter(Boolean)
+    .filter((v, i, arr) => arr.indexOf(v) === i)
+    .sort();
 
   const proveedoresFiltrados = proveedores.filter(p => {
     const unidadP = p.unidad || p.unidadNegocio || '';
     const estadoP = p.estadoEvaluacion || p.estadoHomologacion || 'Pendiente';
     const coincideUnidad = unidadFiltro === 'Todas' || unidadP === unidadFiltro;
     const coincideEstado = estadoFiltro === 'Todos' || estadoP === estadoFiltro;
+    const coincideIndustria = industriaFiltro === 'Todas' || (p.industria || '') === industriaFiltro;
+    const coincidePeriodo = periodoFiltro === 'Todas' || (
+      p.fechaEvaluacion
+        ? campanias.some(c => c.periodo === periodoFiltro && (() => {
+            const fechaEval = new Date(p.fechaEvaluacion);
+            const anio = fechaEval.getFullYear().toString();
+            return periodoFiltro.includes(anio);
+          })())
+        : false
+    );
     const coincideBusqueda = (p.razonSocial || '').toLowerCase().includes(busqueda.toLowerCase()) ||
                              (p.ruc || '').includes(busqueda) ||
                              (p.nombreComercial || '').toLowerCase().includes(busqueda.toLowerCase());
-    return coincideUnidad && coincideEstado && coincideBusqueda;
+    return coincideUnidad && coincideEstado && coincideIndustria && coincidePeriodo && coincideBusqueda;
   });
 
   const mostrarMensajeNotificacion = (mensaje) => {
@@ -80,7 +116,12 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
   const ejecutarExportacionExcel = (codigo) => {
     try {
       if (codigo === 'REP-01') {
-        exportarPadronGeneralExcel(proveedoresFiltrados, { unidad: unidadFiltro });
+        exportarPadronGeneralExcel(proveedoresFiltrados, {
+          unidad: unidadFiltro,
+          industria: industriaFiltro,
+          dimension: dimensionFiltro,
+          periodo: periodoFiltro
+        });
         mostrarMensajeNotificacion('Padrón General descargado exitosamente en formato Excel.');
       } else if (codigo === 'REP-02') {
         const criticos = proveedoresFiltrados.filter(p => p.esCritico);
@@ -267,6 +308,41 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
             <option value="Finalizado">Finalizado</option>
             <option value="En Progreso">En Progreso</option>
             <option value="Pendiente">Pendiente</option>
+          </select>
+
+          <select
+            value={industriaFiltro}
+            onChange={(e) => setIndustriaFiltro(e.target.value)}
+            className="campo-select min-w-[170px]"
+          >
+            <option value="Todas">Todas las Industrias</option>
+            {industrias.map(ind => (
+              <option key={ind.id || ind.codigo} value={ind.nombre}>{ind.nombre}</option>
+            ))}
+          </select>
+
+          <select
+            value={dimensionFiltro}
+            onChange={(e) => setDimensionFiltro(e.target.value)}
+            className="campo-select min-w-[160px]"
+          >
+            <option value="Todas">Todas las Dimensiones</option>
+            <option value="AMB">Ambiental (AMB)</option>
+            <option value="SOC">Social y Comunitaria (SOC)</option>
+            <option value="ETI">Ética y Gobernanza (ETI)</option>
+            <option value="LAB">Prácticas Laborales (LAB)</option>
+            <option value="CAD">Cadena de Suministro (CAD)</option>
+          </select>
+
+          <select
+            value={periodoFiltro}
+            onChange={(e) => setPeriodoFiltro(e.target.value)}
+            className="campo-select min-w-[160px]"
+          >
+            <option value="Todas">Todos los Periodos</option>
+            {listaPeriodos.map(periodo => (
+              <option key={periodo} value={periodo}>{periodo}</option>
+            ))}
           </select>
         </div>
       </div>

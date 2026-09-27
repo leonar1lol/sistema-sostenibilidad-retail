@@ -31,6 +31,9 @@ export const exportarPadronGeneralExcel = (proveedores, filtrosAplicados) => {
     lineas.push(escaparValorCsv('Fecha de emisión') + delimitador + escaparValorCsv(new Date().toLocaleDateString('es-PE')));
     lineas.push(escaparValorCsv('Total proveedores') + delimitador + escaparValorCsv(proveedores ? proveedores.length : 0));
     lineas.push(escaparValorCsv('Unidad filtrada') + delimitador + escaparValorCsv(filtrosAplicados?.unidad || 'Todas'));
+    lineas.push(escaparValorCsv('Industria filtrada') + delimitador + escaparValorCsv(filtrosAplicados?.industria || 'Todas'));
+    lineas.push(escaparValorCsv('Dimensión filtrada') + delimitador + escaparValorCsv(filtrosAplicados?.dimension || 'Todas'));
+    lineas.push(escaparValorCsv('Periodo filtrado') + delimitador + escaparValorCsv(filtrosAplicados?.periodo || 'Todos'));
     lineas.push('');
     
     const cabeceras = ['RUC', 'Razón Social', 'Nombre Comercial', 'Unidad de Negocio', 'Industria', 'Representante Legal', 'Correo Electrónico', 'Teléfono', 'Criticidad de Negocio', 'Estado de Homologación', 'Puntaje General ESG', 'Nivel', 'Dimensión Ambiental', 'Dimensión Social', 'Dimensión Ética', 'Dimensión Laboral', 'Cadena de Suministro', 'Fecha de Evaluación'];

@@ -17,7 +17,7 @@ export const solicitarAcceso = async (peticion, respuesta) => {
   }
 
   try {
-    const valor = Math.floor(100000 + Math.random() * 900000).toString();
+    const valor = crypto.randomInt(100000, 1000000).toString();
 
     await consultarBaseDatos(
       `INSERT INTO codigo_otp (correo, valor, expiracion, usado)
