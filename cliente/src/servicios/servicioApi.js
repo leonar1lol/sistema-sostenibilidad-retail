@@ -299,12 +299,11 @@ export async function crearProveedorAdminApi(datosProveedor) {
   return datos.proveedor;
 }
 
-export async function alternarProveedorCriticoApi(idProveedor, esCritico) {
-  const datos = await peticionAutenticada(`/proveedores/${idProveedor}/critico`, {
-    method: 'PATCH',
-    body: JSON.stringify({ esCritico })
+export async function actualizarUnidadesProveedorApi(idProveedor, { idsUnidad, idsUnidadesCriticas }) {
+  return peticionAutenticada(`/proveedores/${idProveedor}/unidades`, {
+    method: 'PUT',
+    body: JSON.stringify({ idsUnidad, idsUnidadesCriticas })
   });
-  return datos.proveedor;
 }
 
 export async function listarAuditoriaApi() {

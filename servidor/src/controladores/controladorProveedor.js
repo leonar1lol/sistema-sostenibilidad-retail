@@ -1,4 +1,4 @@
-import { consultarBaseDatos } from '../configuracion/baseDatos.js';
+import { consultarBaseDatos, ejecutarTransaccion } from '../configuracion/baseDatos.js';
 import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 
 export const obtenerListaProveedores = async (peticion, respuesta) => {
@@ -20,18 +20,34 @@ export const obtenerListaProveedores = async (peticion, respuesta) => {
         p.tamano_empresa AS "tamanoEmpresa",
         p.anios_operacion AS "aniosOperacion",
         p.sitio_web AS "sitioWeb",
-        p.es_critico AS "esCritico",
         p.creado_en AS "creadoEn",
-        COALESCE(u.nombre, 'Sin asignar') AS unidad,
-        u.id_unidad AS "idUnidad",
+        COALESCE(uni.nombres, 'Sin asignar') AS unidad,
+        COALESCE(uni.lista, '[]'::json) AS "unidades",
+        COALESCE(crit.lista, '[]'::json) AS "unidadesCriticas",
+        COALESCE(crit.total, 0) > 0 AS "esCritico",
         COALESCE(i.nombre, 'Sin asignar') AS industria,
         ev.estado AS "estadoEvaluacion",
         ev.fecha_envio AS "fechaEvaluacion",
         ev.puntaje_total AS "puntajeTotal",
         dim.por_dimension AS "dimensiones"
       FROM proveedor p
-      LEFT JOIN unidad_negocio u ON p.id_unidad = u.id_unidad
       LEFT JOIN industria i ON p.id_industria = i.id_industria
+      LEFT JOIN LATERAL (
+        SELECT
+          string_agg(un.nombre, ', ' ORDER BY un.nombre) AS nombres,
+          json_agg(json_build_object('idUnidad', un.id_unidad, 'nombre', un.nombre) ORDER BY un.nombre) AS lista
+        FROM proveedor_unidad_negocio pun
+        JOIN unidad_negocio un ON un.id_unidad = pun.id_unidad
+        WHERE pun.id_proveedor = p.id_proveedor
+      ) uni ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          count(*) AS total,
+          json_agg(json_build_object('idUnidad', un.id_unidad, 'nombre', un.nombre) ORDER BY un.nombre) AS lista
+        FROM proveedor_unidad_negocio pun
+        JOIN unidad_negocio un ON un.id_unidad = pun.id_unidad
+        WHERE pun.id_proveedor = p.id_proveedor AND pun.es_critico = true
+      ) crit ON true
       LEFT JOIN LATERAL (
         SELECT id_evaluacion, estado, fecha_envio, puntaje_total
         FROM evaluacion
@@ -45,7 +61,9 @@ export const obtenerListaProveedores = async (peticion, respuesta) => {
         JOIN dimension d ON d.id_dimension = pd.id_dimension
         WHERE pd.id_evaluacion = ev.id_evaluacion
       ) dim ON true
-      WHERE $1::boolean OR p.id_unidad = $2
+      WHERE $1::boolean OR EXISTS (
+        SELECT 1 FROM proveedor_unidad_negocio x WHERE x.id_proveedor = p.id_proveedor AND x.id_unidad = $2
+      )
       ORDER BY p.id_proveedor ASC;
     `;
     const resultado = await consultarBaseDatos(consulta, [esCorporativo, peticion.usuario.idUnidad]);
@@ -59,27 +77,44 @@ export const obtenerListaProveedores = async (peticion, respuesta) => {
 };
 
 export const incorporarNuevoProveedor = async (peticion, respuesta) => {
-  const { ruc, razonSocial, representante, correo, tipo, idUnidad, idIndustria } = peticion.body;
+  const { ruc, razonSocial, representante, correo, tipo, idIndustria } = peticion.body;
+  const idsUnidad = Array.isArray(peticion.body.idsUnidad) ? peticion.body.idsUnidad.map(Number) : [];
+  const idsUnidadesCriticas = Array.isArray(peticion.body.idsUnidadesCriticas) ? peticion.body.idsUnidadesCriticas.map(Number) : [];
 
-  if (!ruc || !razonSocial || !correo || !idUnidad) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Faltan campos obligatorios para el registro.' });
+  if (!ruc || !razonSocial || !correo || idsUnidad.length === 0) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Faltan campos obligatorios: debe seleccionar al menos una unidad de negocio.' });
   }
 
   try {
-    const consulta = `
-      INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_unidad, id_industria)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id_proveedor AS "idProveedor", ruc, razon_social AS "razonSocial", representante, correo, tipo, es_critico AS "esCritico";
-    `;
-    const valores = [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idUnidad, idIndustria || null];
-    const resultado = await consultarBaseDatos(consulta, valores);
+    const proveedorCreado = await ejecutarTransaccion(async (cliente) => {
+      const resultado = await cliente.query(
+        `INSERT INTO proveedor (ruc, razon_social, representante, correo, tipo, id_unidad, id_industria)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id_proveedor AS "idProveedor", ruc, razon_social AS "razonSocial", representante, correo, tipo;`,
+        [ruc, razonSocial, representante || null, correo, tipo === 'No retail' ? 'No retail' : 'Retail', idsUnidad[0], idIndustria || null]
+      );
+      const proveedor = resultado.rows[0];
 
-    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Incorporó al proveedor ${razonSocial} (RUC ${ruc})` });
+      for (const idUnidad of idsUnidad) {
+        await cliente.query(
+          `INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad, es_critico) VALUES ($1, $2, $3)`,
+          [proveedor.idProveedor, idUnidad, idsUnidadesCriticas.includes(idUnidad)]
+        );
+      }
+
+      await registrarAuditoria({
+        idUsuario: peticion.usuario.idUsuario,
+        accion: `Incorporó al proveedor ${razonSocial} (RUC ${ruc})`,
+        cliente
+      });
+
+      return { ...proveedor, esCritico: idsUnidadesCriticas.length > 0 };
+    });
 
     return respuesta.status(201).json({
       exito: true,
       mensaje: 'Proveedor incorporado con éxito en la base de datos.',
-      proveedor: resultado.rows[0]
+      proveedor: proveedorCreado
     });
   } catch (error) {
     if (error.code === '23505') {
@@ -89,31 +124,55 @@ export const incorporarNuevoProveedor = async (peticion, respuesta) => {
   }
 };
 
-export const alternarProveedorCritico = async (peticion, respuesta) => {
+export const actualizarUnidadesProveedor = async (peticion, respuesta) => {
   const { id } = peticion.params;
-  const { esCritico } = peticion.body;
+  const esCorporativo = !peticion.usuario.idUnidad;
+  const idsUnidadesCriticas = Array.isArray(peticion.body.idsUnidadesCriticas) ? peticion.body.idsUnidadesCriticas.map(Number) : [];
+  const idsUnidad = Array.isArray(peticion.body.idsUnidad) ? peticion.body.idsUnidad.map(Number) : null;
+
+  if (esCorporativo && (!idsUnidad || idsUnidad.length === 0)) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Debe seleccionar al menos una unidad de negocio.' });
+  }
 
   try {
-    const esCorporativo = !peticion.usuario.idUnidad;
-    const consulta = `
-      UPDATE proveedor SET es_critico = $1
-      WHERE id_proveedor = $2 AND ($3::boolean OR id_unidad = $4)
-      RETURNING id_proveedor AS "idProveedor", razon_social AS "razonSocial", es_critico AS "esCritico";
-    `;
-    const resultado = await consultarBaseDatos(consulta, [!!esCritico, id, esCorporativo, peticion.usuario.idUnidad]);
-
-    if (!resultado.rows[0]) {
-      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado o fuera de su unidad de negocio.' });
+    const proveedorFila = await consultarBaseDatos(
+      'SELECT id_proveedor AS "idProveedor", razon_social AS "razonSocial" FROM proveedor WHERE id_proveedor = $1',
+      [id]
+    );
+    if (!proveedorFila.rows[0]) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado.' });
     }
+    const { razonSocial } = proveedorFila.rows[0];
 
-    await registrarAuditoria({
-      idUsuario: peticion.usuario.idUsuario,
-      accion: `${esCritico ? 'Marcó' : 'Desmarcó'} como crítico al proveedor ${resultado.rows[0].razonSocial}`
+    await ejecutarTransaccion(async (cliente) => {
+      if (esCorporativo) {
+        await cliente.query('DELETE FROM proveedor_unidad_negocio WHERE id_proveedor = $1', [id]);
+        for (const idUnidad of idsUnidad) {
+          await cliente.query(
+            `INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad, es_critico) VALUES ($1, $2, $3)`,
+            [id, idUnidad, idsUnidadesCriticas.includes(idUnidad)]
+          );
+        }
+      } else {
+        const idUnidadPropia = peticion.usuario.idUnidad;
+        await cliente.query(
+          `INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad, es_critico)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (id_proveedor, id_unidad) DO UPDATE SET es_critico = EXCLUDED.es_critico`,
+          [id, idUnidadPropia, idsUnidadesCriticas.includes(idUnidadPropia)]
+        );
+      }
+
+      await registrarAuditoria({
+        idUsuario: peticion.usuario.idUsuario,
+        accion: `Actualizó las unidades de negocio y criticidad del proveedor ${razonSocial}`,
+        cliente
+      });
     });
 
-    return respuesta.status(200).json({ exito: true, proveedor: resultado.rows[0] });
+    return respuesta.status(200).json({ exito: true });
   } catch (error) {
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al actualizar la condición crítica del proveedor.' });
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al actualizar las unidades del proveedor.' });
   }
 };
 

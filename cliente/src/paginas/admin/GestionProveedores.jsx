@@ -24,7 +24,7 @@ import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
 import {
   listarProveedoresAdminApi,
   crearProveedorAdminApi,
-  alternarProveedorCriticoApi,
+  actualizarUnidadesProveedorApi,
   listarUnidadesApi,
   listarIndustriasApi,
   listarEvidenciaProveedorAdminApi
@@ -93,8 +93,12 @@ export default function GestionProveedores({
   const [nuevoRepresentante, setNuevoRepresentante] = useState('');
   const [nuevoCorreo, setNuevoCorreo] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState('Retail');
-  const [nuevaIdUnidad, setNuevaIdUnidad] = useState('');
+  const [nuevasIdsUnidad, setNuevasIdsUnidad] = useState([]);
+  const [nuevasIdsUnidadesCriticas, setNuevasIdsUnidadesCriticas] = useState([]);
   const [nuevaIdIndustria, setNuevaIdIndustria] = useState('');
+
+  const [edicionUnidades, setEdicionUnidades] = useState(null);
+  const [guardandoUnidades, setGuardandoUnidades] = useState(false);
 
   useEffect(() => {
     setFiltroUnidad(filtroUnidadInicial);
@@ -119,7 +123,6 @@ export default function GestionProveedores({
       setProveedores(proveedoresRemotos);
       setUnidades(unidadesRemotas);
       setIndustrias(industriasRemotas);
-      setNuevaIdUnidad((actual) => actual || String(unidadesRemotas[0]?.idUnidad ?? ''));
       setNuevaIdIndustria((actual) => actual || String(industriasRemotas[0]?.idIndustria ?? ''));
     } catch (error) {
       setMensajeError(error.message);
@@ -149,7 +152,7 @@ export default function GestionProveedores({
     const coincideTexto =
       item.razonSocial.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
       item.ruc.includes(terminoBusqueda);
-    const coincideUnidad = filtroUnidad === 'todas' || item.unidad === filtroUnidad;
+    const coincideUnidad = filtroUnidad === 'todas' || (item.unidades || []).some((u) => u.nombre === filtroUnidad);
     const coincideCritico = !filtroSoloCriticos || item.esCritico;
     let coincideEstado = true;
     if (filtroEstado === 'Finalizado') {
@@ -167,17 +170,65 @@ export default function GestionProveedores({
     setTimeout(() => setMensajeNotificacion(''), 3000);
   };
 
-  const alternarCritico = async (prov) => {
+  const abrirEdicionUnidades = (prov) => {
+    setEdicionUnidades(
+      unidades.map((u) => ({
+        idUnidad: u.idUnidad,
+        nombre: u.nombre,
+        asignada: (prov.unidades || []).some((x) => x.idUnidad === u.idUnidad),
+        critica: (prov.unidadesCriticas || []).some((x) => x.idUnidad === u.idUnidad)
+      }))
+    );
+  };
+
+  const alternarAsignacionUnidad = (idUnidad) => {
+    setEdicionUnidades((prev) =>
+      prev.map((u) => (u.idUnidad === idUnidad ? { ...u, asignada: !u.asignada, critica: !u.asignada ? u.critica : false } : u))
+    );
+  };
+
+  const alternarCriticidadUnidad = (idUnidad) => {
+    setEdicionUnidades((prev) => prev.map((u) => (u.idUnidad === idUnidad ? { ...u, critica: !u.critica } : u)));
+  };
+
+  const guardarUnidadesProveedor = async () => {
+    const seleccionadas = edicionUnidades.filter((u) => u.asignada);
+    if (seleccionadas.length === 0) {
+      setMensajeError('Debe seleccionar al menos una unidad de negocio para el proveedor.');
+      return;
+    }
+    setGuardandoUnidades(true);
+    setMensajeError('');
     try {
-      await alternarProveedorCriticoApi(prov.idProveedor, !prov.esCritico);
+      await actualizarUnidadesProveedorApi(proveedorSeleccionado.idProveedor, {
+        idsUnidad: seleccionadas.map((u) => u.idUnidad),
+        idsUnidadesCriticas: seleccionadas.filter((u) => u.critica).map((u) => u.idUnidad)
+      });
       await cargarDatos();
-      if (proveedorSeleccionado?.idProveedor === prov.idProveedor) {
-        setProveedorSeleccionado((prev) => ({ ...prev, esCritico: !prov.esCritico }));
-      }
-      mostrarAviso('Estado de criticidad actualizado.');
+      setEdicionUnidades(null);
+      setProveedorSeleccionado(null);
+      mostrarAviso('Unidades de negocio y criticidad actualizadas.');
     } catch (error) {
       setMensajeError(error.message);
+    } finally {
+      setGuardandoUnidades(false);
     }
+  };
+
+  const alternarSeleccionNuevaUnidad = (idUnidad) => {
+    setNuevasIdsUnidad((prev) => {
+      if (prev.includes(idUnidad)) {
+        setNuevasIdsUnidadesCriticas((prevCriticas) => prevCriticas.filter((id) => id !== idUnidad));
+        return prev.filter((id) => id !== idUnidad);
+      }
+      return [...prev, idUnidad];
+    });
+  };
+
+  const alternarNuevaUnidadCritica = (idUnidad) => {
+    setNuevasIdsUnidadesCriticas((prev) =>
+      prev.includes(idUnidad) ? prev.filter((id) => id !== idUnidad) : [...prev, idUnidad]
+    );
   };
 
   const registrarNuevoProveedor = async (e) => {
@@ -187,6 +238,10 @@ export default function GestionProveedores({
       setMensajeError('El número de RUC debe contener exactamente 11 dígitos numéricos.');
       return;
     }
+    if (nuevasIdsUnidad.length === 0) {
+      setMensajeError('Debe seleccionar al menos una unidad de negocio.');
+      return;
+    }
     try {
       await crearProveedorAdminApi({
         ruc: nuevoRuc,
@@ -194,7 +249,8 @@ export default function GestionProveedores({
         representante: nuevoRepresentante,
         correo: nuevoCorreo,
         tipo: nuevoTipo,
-        idUnidad: Number(nuevaIdUnidad),
+        idsUnidad: nuevasIdsUnidad,
+        idsUnidadesCriticas: nuevasIdsUnidadesCriticas,
         idIndustria: nuevaIdIndustria ? Number(nuevaIdIndustria) : null
       });
       await cargarDatos();
@@ -203,6 +259,8 @@ export default function GestionProveedores({
       setNuevaRazon('');
       setNuevoRepresentante('');
       setNuevoCorreo('');
+      setNuevasIdsUnidad([]);
+      setNuevasIdsUnidadesCriticas([]);
       mostrarAviso('Proveedor incorporado exitosamente al padrón corporativo.');
     } catch (error) {
       setMensajeError(error.message);
@@ -390,7 +448,10 @@ export default function GestionProveedores({
                   return (
                     <tr
                       key={prov.idProveedor}
-                      onClick={() => setProveedorSeleccionado(prov)}
+                      onClick={() => {
+                        setProveedorSeleccionado(prov);
+                        abrirEdicionUnidades(prov);
+                      }}
                       className="cursor-pointer hover:bg-black/[0.015] transition-colors"
                     >
                       <td className="py-3.5 px-4">
@@ -410,9 +471,14 @@ export default function GestionProveedores({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            alternarCritico(prov);
+                            setProveedorSeleccionado(prov);
+                            abrirEdicionUnidades(prov);
                           }}
-                          title={prov.esCritico ? 'Proveedor Crítico (clic para quitar)' : 'No crítico (clic para marcar)'}
+                          title={
+                            prov.esCritico
+                              ? `Crítico para: ${(prov.unidadesCriticas || []).map((u) => u.nombre).join(', ')} (clic para editar)`
+                              : 'No crítico (clic para asignar unidades críticas)'
+                          }
                           className={`p-1.5 rounded-full transition-all cursor-pointer ${
                             prov.esCritico
                               ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
@@ -460,6 +526,7 @@ export default function GestionProveedores({
                           onClick={(e) => {
                             e.stopPropagation();
                             setProveedorSeleccionado(prov);
+                            abrirEdicionUnidades(prov);
                           }}
                           className="p-1.5 rounded-md-token hover:bg-black/[0.04] text-plataformaAzul inline-flex items-center gap-1 text-xs font-medium cursor-pointer"
                         >
@@ -499,7 +566,10 @@ export default function GestionProveedores({
                 </p>
               </div>
               <button
-                onClick={() => setProveedorSeleccionado(null)}
+                onClick={() => {
+                  setProveedorSeleccionado(null);
+                  setEdicionUnidades(null);
+                }}
                 className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -552,15 +622,57 @@ export default function GestionProveedores({
                       </span>
                     </div>
                   </div>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => alternarCritico(proveedorSeleccionado)}
-                    className="boton-secundario text-xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{proveedorSeleccionado.esCritico ? 'Quitar condición de crítico' : 'Marcar como crítico'}</span>
-                  </button>
+                <div className="p-4 rounded-lg-token bg-black/[0.02] border border-black/[0.05]">
+                  <span className="text-etiqueta text-plataformaSecundario block mb-3 font-semibold">
+                    Unidades de Negocio a las que Atiende y Criticidad
+                  </span>
+                  {edicionUnidades && (
+                    <div className="space-y-2">
+                      {edicionUnidades.map((u) => (
+                        <div
+                          key={u.idUnidad}
+                          className="flex items-center justify-between gap-3 p-2.5 rounded-md-token bg-black/[0.015] border border-black/[0.04]"
+                        >
+                          <label className="flex items-center gap-2 text-cuerpo-pequeno text-plataformaTexto cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={u.asignada}
+                              onChange={() => alternarAsignacionUnidad(u.idUnidad)}
+                              className="cursor-pointer"
+                            />
+                            <span className="font-medium">{u.nombre}</span>
+                          </label>
+                          <label
+                            className={`flex items-center gap-1.5 text-xs cursor-pointer ${
+                              u.asignada ? 'text-amber-700' : 'text-black/25 cursor-not-allowed'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={u.critica}
+                              disabled={!u.asignada}
+                              onChange={() => alternarCriticidadUnidad(u.idUnidad)}
+                              className="cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                            <span>Crítico</span>
+                          </label>
+                        </div>
+                      ))}
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={guardarUnidadesProveedor}
+                          disabled={guardandoUnidades}
+                          className="boton-primario text-xs cursor-pointer"
+                        >
+                          {guardandoUnidades ? 'Guardando...' : 'Guardar unidades y criticidad'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {proveedorSeleccionado.dimensiones ? (
@@ -689,7 +801,10 @@ export default function GestionProveedores({
             <div className="flex justify-end pt-5 mt-5 border-t border-black/[0.06]">
               <button
                 type="button"
-                onClick={() => setProveedorSeleccionado(null)}
+                onClick={() => {
+                  setProveedorSeleccionado(null);
+                  setEdicionUnidades(null);
+                }}
                 className="boton-primario"
               >
                 Cerrar ficha
@@ -774,20 +889,43 @@ export default function GestionProveedores({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Unidad</label>
-                  <select
-                    value={nuevaIdUnidad}
-                    onChange={(e) => setNuevaIdUnidad(e.target.value)}
-                    className="campo-select w-full"
-                  >
-                    {unidades.map((u) => (
-                      <option key={u.idUnidad} value={u.idUnidad}>{u.nombre}</option>
-                    ))}
-                  </select>
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Unidades de Negocio a las que Atiende *</label>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto p-2 rounded-md-token bg-black/[0.015] border border-black/[0.06]">
+                  {unidades.map((u) => {
+                    const seleccionada = nuevasIdsUnidad.includes(u.idUnidad);
+                    return (
+                      <div key={u.idUnidad} className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-2 text-cuerpo-pequeno text-plataformaTexto cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={seleccionada}
+                            onChange={() => alternarSeleccionNuevaUnidad(u.idUnidad)}
+                            className="cursor-pointer"
+                          />
+                          <span>{u.nombre}</span>
+                        </label>
+                        <label
+                          className={`flex items-center gap-1 text-xs cursor-pointer ${
+                            seleccionada ? 'text-amber-700' : 'text-black/25 cursor-not-allowed'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={nuevasIdsUnidadesCriticas.includes(u.idUnidad)}
+                            disabled={!seleccionada}
+                            onChange={() => alternarNuevaUnidadCritica(u.idUnidad)}
+                            className="cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span>Crítico</span>
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-etiqueta text-plataformaSecundario block mb-1">Industria</label>
                   <select
@@ -800,18 +938,18 @@ export default function GestionProveedores({
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="text-etiqueta text-plataformaSecundario block mb-1">Tipo de Proveedor</label>
-                <select
-                  value={nuevoTipo}
-                  onChange={(e) => setNuevoTipo(e.target.value)}
-                  className="campo-select w-full"
-                >
-                  <option value="Retail">Retail</option>
-                  <option value="No retail">No retail</option>
-                </select>
+                <div>
+                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Tipo de Proveedor</label>
+                  <select
+                    value={nuevoTipo}
+                    onChange={(e) => setNuevoTipo(e.target.value)}
+                    className="campo-select w-full"
+                  >
+                    <option value="Retail">Retail</option>
+                    <option value="No retail">No retail</option>
+                  </select>
+                </div>
               </div>
             </div>
 

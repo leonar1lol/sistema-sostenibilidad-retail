@@ -55,9 +55,19 @@ CREATE TABLE IF NOT EXISTS proveedor (
   anios_operacion     VARCHAR(50),
   sitio_web           VARCHAR(255),
   es_critico          BOOLEAN NOT NULL DEFAULT FALSE,
-  id_unidad           INT NOT NULL REFERENCES unidad_negocio(id_unidad),
+  id_unidad           INT REFERENCES unidad_negocio(id_unidad),
   id_industria        INT REFERENCES industria(id_industria),
   creado_en           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Un proveedor puede atender/ser crítico para varias unidades de negocio.
+-- proveedor.id_unidad se conserva solo como "unidad de origen del registro";
+-- esta tabla es la fuente de verdad para filtros, visualización y criticidad.
+CREATE TABLE IF NOT EXISTS proveedor_unidad_negocio (
+  id_proveedor INT NOT NULL REFERENCES proveedor(id_proveedor),
+  id_unidad    INT NOT NULL REFERENCES unidad_negocio(id_unidad),
+  es_critico   BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (id_proveedor, id_unidad)
 );
 
 CREATE TABLE IF NOT EXISTS dimension (

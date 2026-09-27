@@ -4,7 +4,7 @@ import {
   obtenerDatosMaestros,
   obtenerListaProveedores,
   incorporarNuevoProveedor,
-  alternarProveedorCritico
+  actualizarUnidadesProveedor
 } from '../controladores/controladorProveedor.js';
 import { listarEvidenciaProveedorAdmin } from '../controladores/controladorEvidencia.js';
 
@@ -14,5 +14,5 @@ enrutadorProveedor.get('/datos-maestros', obtenerDatosMaestros);
 
 enrutadorProveedor.get('/', verificarSesion, obtenerListaProveedores);
 enrutadorProveedor.post('/', verificarSesion, requierePermiso('marcar_critico'), incorporarNuevoProveedor);
-enrutadorProveedor.patch('/:id/critico', verificarSesion, requierePermiso('marcar_critico'), alternarProveedorCritico);
+enrutadorProveedor.put('/:id/unidades', verificarSesion, requierePermiso('marcar_critico'), actualizarUnidadesProveedor);
 enrutadorProveedor.get('/:idProveedor/evidencia', verificarSesion, listarEvidenciaProveedorAdmin);
