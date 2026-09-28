@@ -43,3 +43,11 @@ GEMINI.md
 AGENTS.md
 .agents/
 
+# Scripts de lote locales de Windows
+*.bat
+*.cmd
+
+# Archivos de respaldo y directorios temporales
+*.bak
+*.tmp
+scratch/
