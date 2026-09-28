@@ -98,7 +98,7 @@ aplicacionServidor.get('/api/sistema/monitoreo-bd', async (peticion, respuesta) 
   return respuesta.status(200).json({
     estadoServicio: 'Operativo y Conectado',
     motorBaseDatos: 'PostgreSQL en la Nube (Neon Serverless)',
-    versionApi: '1.0.6',
+    versionApi: '1.0.7',
     cadenaConexionOfuscada: (process.env.URL_BASE_DATOS || '').replace(/:[^:@]+@/, ':****@'),
     poolConexiones: {
       total: grupoConexiones.totalCount,

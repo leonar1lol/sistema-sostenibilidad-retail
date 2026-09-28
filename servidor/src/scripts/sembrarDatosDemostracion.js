@@ -1677,13 +1677,13 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
           'SELECT id_evaluacion FROM evaluacion WHERE id_campania = $1 AND id_proveedor = $2',
           [idCampaniaActiva, idProveedor]
         );
+        await cliente.query(
+          `UPDATE evaluacion SET estado = $1, puntaje_total = $2, fecha_envio = $3 WHERE id_proveedor = $4`,
+          [evData.estado, puntajeCalculado, fechaEnvio, idProveedor]
+        );
         let idEvaluacion;
         if (resEvalExistente.rows.length > 0) {
           idEvaluacion = resEvalExistente.rows[0].id_evaluacion;
-          await cliente.query(
-            `UPDATE evaluacion SET estado = $1, puntaje_total = $2, fecha_envio = $3 WHERE id_evaluacion = $4`,
-            [evData.estado, puntajeCalculado, fechaEnvio, idEvaluacion]
-          );
         } else {
           const resEval = await cliente.query(
             `INSERT INTO evaluacion (id_campania, id_proveedor, token, estado, puntaje_total, fecha_envio)
@@ -1747,8 +1747,14 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
             }
           }
         } else {
-          await cliente.query('DELETE FROM puntaje_dimension WHERE id_evaluacion = $1', [idEvaluacion]);
-          await cliente.query('DELETE FROM respuesta WHERE id_evaluacion = $1', [idEvaluacion]);
+          await cliente.query(
+            'DELETE FROM puntaje_dimension WHERE id_evaluacion IN (SELECT id_evaluacion FROM evaluacion WHERE id_proveedor = $1)',
+            [idProveedor]
+          );
+          await cliente.query(
+            'DELETE FROM respuesta WHERE id_evaluacion IN (SELECT id_evaluacion FROM evaluacion WHERE id_proveedor = $1)',
+            [idProveedor]
+          );
         }
       }
     }
