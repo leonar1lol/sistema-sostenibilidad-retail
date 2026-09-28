@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "desarrollo": "vite",
     "construir": "vite build",
     "vista-previa": "vite preview"

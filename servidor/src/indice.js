@@ -98,6 +98,8 @@ aplicacionServidor.get('/api/sistema/monitoreo-bd', async (peticion, respuesta) 
   return respuesta.status(200).json({
     estadoServicio: 'Operativo y Conectado',
     motorBaseDatos: 'PostgreSQL en la Nube (Neon Serverless)',
+    versionApi: '1.0.1',
+    cadenaConexionOfuscada: (process.env.URL_BASE_DATOS || '').replace(/:[^:@]+@/, ':****@'),
     poolConexiones: {
       total: grupoConexiones.totalCount,
       inactivas: grupoConexiones.idleCount,
@@ -115,6 +117,16 @@ aplicacionServidor.get('/api/sistema/monitoreo-bd', async (peticion, respuesta) 
       'Bitácora de auditoría inmutable de trazabilidad'
     ]
   });
+});
+
+aplicacionServidor.post('/api/sistema/sembrar-datos', async (peticion, respuesta) => {
+  try {
+    const { sembrarDatos } = await import('./scripts/sembrarDatosDemostracion.js');
+    const resultado = await sembrarDatos();
+    return respuesta.status(200).json({ exito: true, resultado });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: error.message });
+  }
 });
 
 aplicacionServidor.use((error, peticion, respuesta, siguiente) => {

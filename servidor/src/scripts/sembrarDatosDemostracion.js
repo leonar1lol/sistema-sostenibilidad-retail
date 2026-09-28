@@ -206,6 +206,174 @@ const campaniasMaestras = [
 
 const padronProveedores = [
   {
+    ruc: '20999888771',
+    razonSocial: 'Prueba Movil QA SAC',
+    nombreComercial: 'Móvil QA Soluciones Perú',
+    direccionFiscal: 'Av. Paseo de la República 3220, San Isidro',
+    departamento: 'Lima',
+    representante: 'Representante QA',
+    cargoRepresentante: 'Gerente de Aseguramiento de Calidad',
+    telefono: '+51 1 4229000',
+    correo: 'qa-mobile-view@test.com',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Mediana empresa',
+    aniosOperacion: '8 años',
+    sitioWeb: 'https://www.movilqa.pe',
+    esCritico: true,
+    codigoIndustria: 'AGR',
+    unidades: [
+      { codigo: 'SPSA', esCritico: true }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 85, social: 80, etica: 88, laboral: 84, cadena: 78 }
+  },
+  {
+    ruc: '20111222331',
+    razonSocial: 'Fase5B Test SAC',
+    nombreComercial: 'Fase 5B Logística y Almacenes',
+    direccionFiscal: 'Av. Elmer Faucett 2880, Callao',
+    departamento: 'Callao',
+    representante: 'Carlos Espinoza Hurtado',
+    cargoRepresentante: 'Gerente Comercial',
+    telefono: '+51 1 5751200',
+    correo: 'contacto@fase5b.pe',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Pequeña empresa',
+    aniosOperacion: '6 años',
+    sitioWeb: 'https://www.fase5b.pe',
+    esCritico: false,
+    codigoIndustria: 'LOG',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 78, social: 75, etica: 82, laboral: 80, cadena: 74 }
+  },
+  {
+    ruc: '20111222332',
+    razonSocial: 'Fase5C Test SAC',
+    nombreComercial: 'Fase 5C Servicios Especializados',
+    direccionFiscal: 'Jr. Carabaya 550, Cercado de Lima',
+    departamento: 'Lima',
+    representante: 'Lucía Benavides Prado',
+    cargoRepresentante: 'Directora de Cumplimiento',
+    telefono: '+51 1 4283400',
+    correo: 'contacto@fase5c.pe',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Mediana empresa',
+    aniosOperacion: '9 años',
+    sitioWeb: 'https://www.fase5c.pe',
+    esCritico: false,
+    codigoIndustria: 'SGE',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 80, social: 82, etica: 85, laboral: 81, cadena: 76 }
+  },
+  {
+    ruc: '20111222333',
+    razonSocial: 'Fase5D Test SAC',
+    nombreComercial: 'Fase 5D Distribución Integral',
+    direccionFiscal: 'Av. Nicolás Arriola 1420, La Victoria',
+    departamento: 'Lima',
+    representante: 'Martín Barrenechea Soto',
+    cargoRepresentante: 'Gerente de Abastecimiento',
+    telefono: '+51 1 3248890',
+    correo: 'contacto@fase5d.pe',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Gran empresa',
+    aniosOperacion: '14 años',
+    sitioWeb: 'https://www.fase5d.pe',
+    esCritico: false,
+    codigoIndustria: 'LOG',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 84, social: 86, etica: 88, laboral: 85, cadena: 80 }
+  },
+  {
+    ruc: '20111222334',
+    razonSocial: 'Fase5E Test SAC',
+    nombreComercial: 'Fase 5E Operaciones y Empaques',
+    direccionFiscal: 'Av. Separadora Industrial 2100, Ate',
+    departamento: 'Lima',
+    representante: 'Patricia Zevallos Ramos',
+    cargoRepresentante: 'Gerente General',
+    telefono: '+51 1 3495500',
+    correo: 'contacto@fase5e.pe',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Mediana empresa',
+    aniosOperacion: '11 años',
+    sitioWeb: 'https://www.fase5e.pe',
+    esCritico: false,
+    codigoIndustria: 'ESS',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 82, social: 84, etica: 86, laboral: 83, cadena: 79 }
+  },
+  {
+    ruc: '20999888990',
+    razonSocial: 'Prueba QA Duplicados S.A.C.',
+    nombreComercial: 'Duplicados QA Consultores',
+    direccionFiscal: 'Av. Los Próceres 650, Surco',
+    departamento: 'Lima',
+    representante: 'Fernando Alarcón Tello',
+    cargoRepresentante: 'Jefe de Operaciones',
+    telefono: '+51 1 2714455',
+    correo: 'qa-duplicados@test.com',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Mediana empresa',
+    aniosOperacion: '7 años',
+    sitioWeb: 'https://www.qaduplicados.pe',
+    esCritico: false,
+    codigoIndustria: 'SGE',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 79, social: 81, etica: 84, laboral: 80, cadena: 77 }
+  },
+  {
+    ruc: '20999888772',
+    razonSocial: 'Prueba Desktop QA SAC',
+    nombreComercial: 'Desktop QA Soluciones Tecnológicas',
+    direccionFiscal: 'Calle Las Camelias 790, San Isidro',
+    departamento: 'Lima',
+    representante: 'Claudia Mendoza Pollarolo',
+    cargoRepresentante: 'Directora de TI y Calidad',
+    telefono: '+51 1 4402233',
+    correo: 'qa-desktop@test.com',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Gran empresa',
+    aniosOperacion: '12 años',
+    sitioWeb: 'https://www.desktopqa.pe',
+    esCritico: false,
+    codigoIndustria: 'EE',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 87, social: 89, etica: 92, laboral: 88, cadena: 83 }
+  },
+  {
+    ruc: '20999888773',
+    razonSocial: 'Prueba Reglas QA SAC',
+    nombreComercial: 'Reglas QA Consultoría Integral',
+    direccionFiscal: 'Av. Rivera Navarrete 501, San Isidro',
+    departamento: 'Lima',
+    representante: 'Gonzalo Silva Valdivia',
+    cargoRepresentante: 'Gerente de Auditoría Corporativa',
+    telefono: '+51 1 4428899',
+    correo: 'qa-reglas@test.com',
+    tipo: 'Retail',
+    tamanoEmpresa: 'Mediana empresa',
+    aniosOperacion: '10 años',
+    sitioWeb: 'https://www.reglasqa.pe',
+    esCritico: false,
+    codigoIndustria: 'SGE',
+    unidades: [
+      { codigo: 'SPSA', esCritico: false }
+    ],
+    evaluacion2026: { estado: 'Finalizado', ambiental: 83, social: 85, etica: 89, laboral: 84, cadena: 81 }
+  },
+  {
     ruc: '20100070970',
     razonSocial: 'Alicorp S.A.A.',
     nombreComercial: 'Alicorp',
@@ -1162,9 +1330,9 @@ const eventosAuditoriaHistoricos = [
   { accion: 'Emisión de Certificado Oficial de Homologación ESG (Ransa)', fecha: '2026-09-25 09:40:50', correo: 'mprado@intercorpretail.pe' }
 ];
 
-async function sembrarDatos() {
+export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) {
   const cliente = new Client({
-    connectionString: process.env.URL_BASE_DATOS,
+    connectionString: cadenaConexion,
     ssl: { rejectUnauthorized: false }
   });
 
@@ -1414,17 +1582,38 @@ async function sembrarDatos() {
       );
     }
 
+    await cliente.query(`
+      UPDATE proveedor SET
+        nombre_comercial = COALESCE(NULLIF(nombre_comercial, ''), razon_social),
+        direccion_fiscal = COALESCE(NULLIF(direccion_fiscal, ''), 'Av. Javier Prado Este 4200, Santiago de Surco'),
+        departamento = COALESCE(NULLIF(departamento, ''), 'Lima'),
+        cargo_representante = COALESCE(NULLIF(cargo_representante, ''), 'Gerente de Operaciones'),
+        telefono = COALESCE(NULLIF(telefono, ''), '+51 1 6188000'),
+        tamano_empresa = COALESCE(NULLIF(tamano_empresa, ''), 'Gran empresa'),
+        anios_operacion = COALESCE(NULLIF(anios_operacion, ''), '15 años'),
+        sitio_web = COALESCE(NULLIF(sitio_web, ''), 'https://www.intercorpretail.pe')
+      WHERE direccion_fiscal IS NULL OR telefono IS NULL OR departamento IS NULL OR tamano_empresa IS NULL OR anios_operacion IS NULL OR sitio_web IS NULL
+    `);
+
     console.log('Siembra integral de datos de demostración completada con éxito.');
     console.log(`Proveedores procesados: ${padronProveedores.length}`);
     console.log(`Campañas configuradas: ${campaniasMaestras.length}`);
     console.log(`Usuarios corporativos con clave '${CLAVE_DEMO}': ${usuariosEquipo.length}`);
 
     await cliente.end();
+    return {
+      exito: true,
+      proveedores: padronProveedores.length,
+      campanias: campaniasMaestras.length,
+      usuarios: usuariosEquipo.length
+    };
   } catch (error) {
     console.error('Error durante la siembra de datos:', error);
     await cliente.end();
-    process.exit(1);
+    throw error;
   }
 }
 
-sembrarDatos();
+if (process.argv[1] && process.argv[1].includes('sembrarDatosDemostracion')) {
+  sembrarDatos().catch(() => process.exit(1));
+}
