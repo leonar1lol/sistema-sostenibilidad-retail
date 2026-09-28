@@ -6,8 +6,8 @@
     "servidor"
   ],
   "scripts": {
-    "build": "npm --prefix cliente run construir",
-    "construir": "npm --prefix cliente run construir",
+    "build": "npm --prefix cliente run construir && node -e \"const fs=require('fs'); fs.cpSync('cliente/dist', 'dist', {recursive: true});\"",
+    "construir": "npm --prefix cliente run construir && node -e \"const fs=require('fs'); fs.cpSync('cliente/dist', 'dist', {recursive: true});\"",
     "cliente:desarrollo": "npm --prefix cliente run desarrollo",
     "cliente:construir": "npm --prefix cliente run construir",
     "servidor:desarrollo": "npm --prefix servidor run desarrollo",

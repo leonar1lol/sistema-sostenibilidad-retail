@@ -7,6 +7,7 @@ export const obtenerListaProveedores = async (peticion, respuesta) => {
     const consulta = `
       SELECT
         p.id_proveedor AS "idProveedor",
+        COALESCE(p.id_unidad, (SELECT pun.id_unidad FROM proveedor_unidad_negocio pun WHERE pun.id_proveedor = p.id_proveedor LIMIT 1), 1) AS "idUnidad",
         p.ruc,
         p.razon_social AS "razonSocial",
         p.nombre_comercial AS "nombreComercial",
