@@ -1340,37 +1340,125 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
     await cliente.connect();
     console.log('Conectado a Neon PostgreSQL para sembrar datos reales de demostración...');
 
-    for (const u of unidades) {
-      await cliente.query(
-        `INSERT INTO unidad_negocio (codigo, nombre, gerente)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (nombre) DO UPDATE SET codigo = EXCLUDED.codigo, gerente = EXCLUDED.gerente`,
-        [u.codigo, u.nombre, u.gerente]
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS campania (
+        id_campania SERIAL PRIMARY KEY,
+        nombre VARCHAR(120) NOT NULL,
+        periodo VARCHAR(40) NOT NULL,
+        estado VARCHAR(20) NOT NULL DEFAULT 'Borrador'
       );
+      CREATE TABLE IF NOT EXISTS proveedor_unidad_negocio (
+        id_proveedor INT NOT NULL,
+        id_unidad INT NOT NULL,
+        es_critico BOOLEAN NOT NULL DEFAULT FALSE
+      );
+      CREATE TABLE IF NOT EXISTS evaluacion (
+        id_evaluacion SERIAL PRIMARY KEY,
+        id_campania INT NOT NULL,
+        id_proveedor INT NOT NULL,
+        token VARCHAR(80) NOT NULL,
+        estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+        fecha_envio TIMESTAMPTZ,
+        puntaje_total NUMERIC(5,2)
+      );
+      CREATE TABLE IF NOT EXISTS puntaje_dimension (
+        id_puntaje SERIAL PRIMARY KEY,
+        id_evaluacion INT NOT NULL,
+        id_dimension INT NOT NULL,
+        valor NUMERIC(5,2) NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS respuesta (
+        id_respuesta SERIAL PRIMARY KEY,
+        id_evaluacion INT NOT NULL,
+        id_item INT NOT NULL,
+        id_alternativa INT NOT NULL,
+        fecha TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS auditoria (
+        id_auditoria SERIAL PRIMARY KEY,
+        id_usuario INT,
+        id_evaluacion INT,
+        accion VARCHAR(120) NOT NULL,
+        fecha TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS nombre_comercial VARCHAR(200);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS direccion_fiscal VARCHAR(255);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS departamento VARCHAR(100);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS cargo_representante VARCHAR(120);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS telefono VARCHAR(30);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS tamano_empresa VARCHAR(80);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS anios_operacion VARCHAR(50);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS sitio_web VARCHAR(255);
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS es_critico BOOLEAN DEFAULT FALSE;
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS id_unidad INT;
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS id_industria INT;
+      ALTER TABLE proveedor ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE;
+      ALTER TABLE evaluacion ADD COLUMN IF NOT EXISTS fecha_envio TIMESTAMPTZ;
+      ALTER TABLE evaluacion ADD COLUMN IF NOT EXISTS puntaje_total NUMERIC(5,2);
+      ALTER TABLE evaluacion ADD COLUMN IF NOT EXISTS token VARCHAR(80);
+      ALTER TABLE evaluacion ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'Pendiente';
+      ALTER TABLE proveedor_unidad_negocio ADD COLUMN IF NOT EXISTS es_critico BOOLEAN DEFAULT FALSE;
+      ALTER TABLE industria ADD COLUMN IF NOT EXISTS tipo VARCHAR(60);
+    `);
+
+    for (const u of unidades) {
+      const resExistente = await cliente.query(
+        'SELECT id_unidad FROM unidad_negocio WHERE codigo = $1 OR nombre = $2',
+        [u.codigo, u.nombre]
+      );
+      if (resExistente.rows.length > 0) {
+        await cliente.query(
+          'UPDATE unidad_negocio SET codigo = $1, nombre = $2, gerente = $3 WHERE id_unidad = $4',
+          [u.codigo, u.nombre, u.gerente, resExistente.rows[0].id_unidad]
+        );
+      } else {
+        await cliente.query(
+          'INSERT INTO unidad_negocio (codigo, nombre, gerente) VALUES ($1, $2, $3)',
+          [u.codigo, u.nombre, u.gerente]
+        );
+      }
     }
     const mapaUnidades = {};
     const resUnidades = await cliente.query('SELECT id_unidad, codigo FROM unidad_negocio');
     resUnidades.rows.forEach(r => { mapaUnidades[r.codigo] = r.id_unidad; });
 
     for (const ind of industrias) {
-      await cliente.query(
-        `INSERT INTO industria (codigo, nombre, tipo)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, tipo = EXCLUDED.tipo`,
-        [ind.codigo, ind.nombre, ind.tipo]
+      const resExistente = await cliente.query(
+        'SELECT id_industria FROM industria WHERE codigo = $1 OR nombre = $2',
+        [ind.codigo, ind.nombre]
       );
+      if (resExistente.rows.length > 0) {
+        await cliente.query(
+          'UPDATE industria SET codigo = $1, nombre = $2, tipo = $3 WHERE id_industria = $4',
+          [ind.codigo, ind.nombre, ind.tipo, resExistente.rows[0].id_industria]
+        );
+      } else {
+        await cliente.query(
+          'INSERT INTO industria (codigo, nombre, tipo) VALUES ($1, $2, $3)',
+          [ind.codigo, ind.nombre, ind.tipo]
+        );
+      }
     }
     const mapaIndustrias = {};
     const resIndustrias = await cliente.query('SELECT id_industria, codigo FROM industria');
     resIndustrias.rows.forEach(r => { mapaIndustrias[r.codigo] = r.id_industria; });
 
     for (const d of dimensiones) {
-      await cliente.query(
-        `INSERT INTO dimension (codigo, nombre, peso)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (nombre) DO UPDATE SET codigo = EXCLUDED.codigo, peso = EXCLUDED.peso`,
-        [d.codigo, d.nombre, d.peso]
+      const resExistente = await cliente.query(
+        'SELECT id_dimension FROM dimension WHERE codigo = $1 OR nombre = $2',
+        [d.codigo, d.nombre]
       );
+      if (resExistente.rows.length > 0) {
+        await cliente.query(
+          'UPDATE dimension SET codigo = $1, nombre = $2, peso = $3 WHERE id_dimension = $4',
+          [d.codigo, d.nombre, d.peso, resExistente.rows[0].id_dimension]
+        );
+      } else {
+        await cliente.query(
+          'INSERT INTO dimension (codigo, nombre, peso) VALUES ($1, $2, $3)',
+          [d.codigo, d.nombre, d.peso]
+        );
+      }
     }
     const mapaDimensiones = {};
     const resDimensiones = await cliente.query('SELECT id_dimension, codigo FROM dimension');
@@ -1379,14 +1467,26 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
     const mapaItems = {};
     for (const p of preguntas) {
       const idDim = mapaDimensiones[p.codigoDimension];
-      const resItem = await cliente.query(
-        `INSERT INTO item (codigo, enunciado, peso, id_dimension)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (codigo) DO UPDATE SET enunciado = EXCLUDED.enunciado, peso = EXCLUDED.peso
-         RETURNING id_item`,
-        [p.codigo, p.enunciado, p.peso, idDim]
+      const resItemExistente = await cliente.query(
+        'SELECT id_item FROM item WHERE codigo = $1',
+        [p.codigo]
       );
-      const idItem = resItem.rows[0].id_item;
+      let idItem;
+      if (resItemExistente.rows.length > 0) {
+        idItem = resItemExistente.rows[0].id_item;
+        await cliente.query(
+          'UPDATE item SET enunciado = $1, peso = $2, id_dimension = $3 WHERE id_item = $4',
+          [p.enunciado, p.peso, idDim, idItem]
+        );
+      } else {
+        const resItem = await cliente.query(
+          `INSERT INTO item (codigo, enunciado, peso, id_dimension)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id_item`,
+          [p.codigo, p.enunciado, p.peso, idDim]
+        );
+        idItem = resItem.rows[0].id_item;
+      }
       mapaItems[p.codigo] = { idItem, alternativas: [] };
 
       for (let orden = 0; orden < p.alternativas.length; orden++) {
@@ -1409,12 +1509,16 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
       }
 
       for (const idInd of Object.values(mapaIndustrias)) {
-        await cliente.query(
-          `INSERT INTO item_industria (id_item, id_industria, obligatorio)
-           VALUES ($1, $2, true)
-           ON CONFLICT (id_item, id_industria) DO NOTHING`,
+        const resRelExistente = await cliente.query(
+          'SELECT id_item_industria FROM item_industria WHERE id_item = $1 AND id_industria = $2',
           [idItem, idInd]
         );
+        if (resRelExistente.rows.length === 0) {
+          await cliente.query(
+            'INSERT INTO item_industria (id_item, id_industria, obligatorio) VALUES ($1, $2, true)',
+            [idItem, idInd]
+          );
+        }
       }
     }
 
@@ -1426,19 +1530,27 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
       const idRol = rolRes.rows[0]?.id_rol || 1;
       const idUnidad = u.codigoUnidad ? mapaUnidades[u.codigoUnidad] : null;
 
-      const resUser = await cliente.query(
-        `INSERT INTO usuario (correo, nombre, clave_hash, id_rol, id_unidad, estado)
-         VALUES ($1, $2, $3, $4, $5, true)
-         ON CONFLICT (correo) DO UPDATE SET
-           nombre = EXCLUDED.nombre,
-           clave_hash = EXCLUDED.clave_hash,
-           id_rol = EXCLUDED.id_rol,
-           id_unidad = EXCLUDED.id_unidad,
-           estado = true
-         RETURNING id_usuario`,
-        [u.correo, u.nombre, claveHash, idRol, idUnidad]
+      const resUserExistente = await cliente.query(
+        'SELECT id_usuario FROM usuario WHERE correo = $1',
+        [u.correo]
       );
-      mapaUsuarios[u.correo] = resUser.rows[0]?.id_usuario;
+      let idUsuario;
+      if (resUserExistente.rows.length > 0) {
+        idUsuario = resUserExistente.rows[0].id_usuario;
+        await cliente.query(
+          `UPDATE usuario SET nombre = $1, clave_hash = $2, id_rol = $3, id_unidad = $4, estado = true WHERE id_usuario = $5`,
+          [u.nombre, claveHash, idRol, idUnidad, idUsuario]
+        );
+      } else {
+        const resUser = await cliente.query(
+          `INSERT INTO usuario (correo, nombre, clave_hash, id_rol, id_unidad, estado)
+           VALUES ($1, $2, $3, $4, $5, true)
+           RETURNING id_usuario`,
+          [u.correo, u.nombre, claveHash, idRol, idUnidad]
+        );
+        idUsuario = resUser.rows[0]?.id_usuario;
+      }
+      mapaUsuarios[u.correo] = idUsuario;
     }
 
     const mapaCampanias = {};
@@ -1462,48 +1574,74 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
       const idUnidadPrincipal = mapaUnidades[p.unidades[0]?.codigo] || 1;
       const idIndustria = mapaIndustrias[p.codigoIndustria] || 1;
 
-      const resProv = await cliente.query(
-        `INSERT INTO proveedor (
-           ruc, razon_social, nombre_comercial, direccion_fiscal, departamento,
-           representante, cargo_representante, telefono, correo, tipo, tamano_empresa,
-           anios_operacion, sitio_web, es_critico, id_unidad, id_industria, activo
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true)
-         ON CONFLICT (ruc) DO UPDATE SET
-           razon_social = EXCLUDED.razon_social,
-           nombre_comercial = EXCLUDED.nombre_comercial,
-           direccion_fiscal = EXCLUDED.direccion_fiscal,
-           departamento = EXCLUDED.departamento,
-           representante = EXCLUDED.representante,
-           cargo_representante = EXCLUDED.cargo_representante,
-           telefono = EXCLUDED.telefono,
-           correo = EXCLUDED.correo,
-           tipo = EXCLUDED.tipo,
-           tamano_empresa = EXCLUDED.tamano_empresa,
-           anios_operacion = EXCLUDED.anios_operacion,
-           sitio_web = EXCLUDED.sitio_web,
-           es_critico = EXCLUDED.es_critico,
-           id_unidad = EXCLUDED.id_unidad,
-           id_industria = EXCLUDED.id_industria,
-           activo = true
-         RETURNING id_proveedor`,
-        [
-          p.ruc, p.razonSocial, p.nombreComercial, p.direccionFiscal, p.departamento,
-          p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, p.tamanoEmpresa,
-          p.aniosOperacion, p.sitioWeb, p.esCritico, idUnidadPrincipal, idIndustria
-        ]
+      const resProvExistente = await cliente.query(
+        'SELECT id_proveedor FROM proveedor WHERE ruc = $1',
+        [p.ruc]
       );
-      const idProveedor = resProv.rows[0].id_proveedor;
+      let idProveedor;
+      if (resProvExistente.rows.length > 0) {
+        idProveedor = resProvExistente.rows[0].id_proveedor;
+        await cliente.query(
+          `UPDATE proveedor SET
+             razon_social = $1,
+             nombre_comercial = $2,
+             direccion_fiscal = $3,
+             departamento = $4,
+             representante = $5,
+             cargo_representante = $6,
+             telefono = $7,
+             correo = $8,
+             tipo = $9,
+             tamano_empresa = $10,
+             anios_operacion = $11,
+             sitio_web = $12,
+             es_critico = $13,
+             id_unidad = $14,
+             id_industria = $15,
+             activo = true
+           WHERE id_proveedor = $16`,
+          [
+            p.razonSocial, p.nombreComercial, p.direccionFiscal, p.departamento,
+            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, p.tamanoEmpresa,
+            p.aniosOperacion, p.sitioWeb, p.esCritico, idUnidadPrincipal, idIndustria, idProveedor
+          ]
+        );
+      } else {
+        const resProv = await cliente.query(
+          `INSERT INTO proveedor (
+             ruc, razon_social, nombre_comercial, direccion_fiscal, departamento,
+             representante, cargo_representante, telefono, correo, tipo, tamano_empresa,
+             anios_operacion, sitio_web, es_critico, id_unidad, id_industria, activo
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true)
+           RETURNING id_proveedor`,
+          [
+            p.ruc, p.razonSocial, p.nombreComercial, p.direccionFiscal, p.departamento,
+            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, p.tamanoEmpresa,
+            p.aniosOperacion, p.sitioWeb, p.esCritico, idUnidadPrincipal, idIndustria
+          ]
+        );
+        idProveedor = resProv.rows[0].id_proveedor;
+      }
 
       for (const u of p.unidades) {
         const idU = mapaUnidades[u.codigo];
         if (idU) {
-          await cliente.query(
-            `INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad, es_critico)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (id_proveedor, id_unidad) DO UPDATE SET es_critico = EXCLUDED.es_critico`,
-            [idProveedor, idU, u.esCritico]
+          const resRelU = await cliente.query(
+            'SELECT id_proveedor FROM proveedor_unidad_negocio WHERE id_proveedor = $1 AND id_unidad = $2',
+            [idProveedor, idU]
           );
+          if (resRelU.rows.length > 0) {
+            await cliente.query(
+              'UPDATE proveedor_unidad_negocio SET es_critico = $1 WHERE id_proveedor = $2 AND id_unidad = $3',
+              [u.esCritico, idProveedor, idU]
+            );
+          } else {
+            await cliente.query(
+              'INSERT INTO proveedor_unidad_negocio (id_proveedor, id_unidad, es_critico) VALUES ($1, $2, $3)',
+              [idProveedor, idU, u.esCritico]
+            );
+          }
         }
       }
 
@@ -1523,17 +1661,26 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
         }
 
         const fechaEnvio = evData.estado === 'Finalizado' ? new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) : null;
-        const resEval = await cliente.query(
-          `INSERT INTO evaluacion (id_campania, id_proveedor, token, estado, puntaje_total, fecha_envio)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id_campania, id_proveedor) DO UPDATE SET
-             estado = EXCLUDED.estado,
-             puntaje_total = EXCLUDED.puntaje_total,
-             fecha_envio = EXCLUDED.fecha_envio
-           RETURNING id_evaluacion`,
-          [idCampaniaActiva, idProveedor, tokenEvaluacion, evData.estado, puntajeCalculado, fechaEnvio]
+        const resEvalExistente = await cliente.query(
+          'SELECT id_evaluacion FROM evaluacion WHERE id_campania = $1 AND id_proveedor = $2',
+          [idCampaniaActiva, idProveedor]
         );
-        const idEvaluacion = resEval.rows[0].id_evaluacion;
+        let idEvaluacion;
+        if (resEvalExistente.rows.length > 0) {
+          idEvaluacion = resEvalExistente.rows[0].id_evaluacion;
+          await cliente.query(
+            `UPDATE evaluacion SET estado = $1, puntaje_total = $2, fecha_envio = $3 WHERE id_evaluacion = $4`,
+            [evData.estado, puntajeCalculado, fechaEnvio, idEvaluacion]
+          );
+        } else {
+          const resEval = await cliente.query(
+            `INSERT INTO evaluacion (id_campania, id_proveedor, token, estado, puntaje_total, fecha_envio)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id_evaluacion`,
+            [idCampaniaActiva, idProveedor, tokenEvaluacion, evData.estado, puntajeCalculado, fechaEnvio]
+          );
+          idEvaluacion = resEval.rows[0].id_evaluacion;
+        }
 
         if (evData.estado === 'Finalizado') {
           const notasDimensionales = [
@@ -1547,12 +1694,21 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
           for (const nd of notasDimensionales) {
             const idDim = mapaDimensiones[nd.codigo];
             if (idDim) {
-              await cliente.query(
-                `INSERT INTO puntaje_dimension (id_evaluacion, id_dimension, valor)
-                 VALUES ($1, $2, $3)
-                 ON CONFLICT (id_evaluacion, id_dimension) DO UPDATE SET valor = EXCLUDED.valor`,
-                [idEvaluacion, idDim, nd.valor]
+              const resPuntExistente = await cliente.query(
+                'SELECT id_puntaje FROM puntaje_dimension WHERE id_evaluacion = $1 AND id_dimension = $2',
+                [idEvaluacion, idDim]
               );
+              if (resPuntExistente.rows.length > 0) {
+                await cliente.query(
+                  'UPDATE puntaje_dimension SET valor = $1 WHERE id_puntaje = $2',
+                  [nd.valor, resPuntExistente.rows[0].id_puntaje]
+                );
+              } else {
+                await cliente.query(
+                  'INSERT INTO puntaje_dimension (id_evaluacion, id_dimension, valor) VALUES ($1, $2, $3)',
+                  [idEvaluacion, idDim, nd.valor]
+                );
+              }
             }
           }
 
@@ -1560,12 +1716,22 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
             const itemObj = mapaItems[itemCod];
             const altElegida = itemObj.alternativas[0];
             if (altElegida) {
-              await cliente.query(
-                `INSERT INTO respuesta (id_evaluacion, id_item, id_alternativa, fecha)
-                 VALUES ($1, $2, $3, CURRENT_TIMESTAMP - INTERVAL '3 days')
-                 ON CONFLICT (id_evaluacion, id_item) DO UPDATE SET id_alternativa = EXCLUDED.id_alternativa`,
-                [idEvaluacion, itemObj.idItem, altElegida.idAlternativa]
+              const resRespExistente = await cliente.query(
+                'SELECT id_respuesta FROM respuesta WHERE id_evaluacion = $1 AND id_item = $2',
+                [idEvaluacion, itemObj.idItem]
               );
+              if (resRespExistente.rows.length > 0) {
+                await cliente.query(
+                  'UPDATE respuesta SET id_alternativa = $1 WHERE id_respuesta = $2',
+                  [altElegida.idAlternativa, resRespExistente.rows[0].id_respuesta]
+                );
+              } else {
+                await cliente.query(
+                  `INSERT INTO respuesta (id_evaluacion, id_item, id_alternativa, fecha)
+                   VALUES ($1, $2, $3, CURRENT_TIMESTAMP - INTERVAL '3 days')`,
+                  [idEvaluacion, itemObj.idItem, altElegida.idAlternativa]
+                );
+              }
             }
           }
         }
