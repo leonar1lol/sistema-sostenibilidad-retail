@@ -216,7 +216,7 @@ const padronProveedores = [
     telefono: '+51 1 4229000',
     correo: 'qa-mobile-view@test.com',
     tipo: 'Retail',
-    tamanoEmpresa: 'Mediana empresa',
+    tamanoEmpresa: 'PYME',
     aniosOperacion: '8 años',
     sitioWeb: 'https://www.movilqa.pe',
     esCritico: true,
@@ -237,7 +237,7 @@ const padronProveedores = [
     telefono: '+51 1 5751200',
     correo: 'contacto@fase5b.pe',
     tipo: 'Retail',
-    tamanoEmpresa: 'Pequeña empresa',
+    tamanoEmpresa: 'MYPE',
     aniosOperacion: '6 años',
     sitioWeb: 'https://www.fase5b.pe',
     esCritico: false,
@@ -258,7 +258,7 @@ const padronProveedores = [
     telefono: '+51 1 4283400',
     correo: 'contacto@fase5c.pe',
     tipo: 'Retail',
-    tamanoEmpresa: 'Mediana empresa',
+    tamanoEmpresa: 'PYME',
     aniosOperacion: '9 años',
     sitioWeb: 'https://www.fase5c.pe',
     esCritico: false,
@@ -300,7 +300,7 @@ const padronProveedores = [
     telefono: '+51 1 3495500',
     correo: 'contacto@fase5e.pe',
     tipo: 'Retail',
-    tamanoEmpresa: 'Mediana empresa',
+    tamanoEmpresa: 'PYME',
     aniosOperacion: '11 años',
     sitioWeb: 'https://www.fase5e.pe',
     esCritico: false,
@@ -321,7 +321,7 @@ const padronProveedores = [
     telefono: '+51 1 2714455',
     correo: 'qa-duplicados@test.com',
     tipo: 'Retail',
-    tamanoEmpresa: 'Mediana empresa',
+    tamanoEmpresa: 'PYME',
     aniosOperacion: '7 años',
     sitioWeb: 'https://www.qaduplicados.pe',
     esCritico: false,
@@ -363,7 +363,7 @@ const padronProveedores = [
     telefono: '+51 1 4428899',
     correo: 'qa-reglas@test.com',
     tipo: 'Retail',
-    tamanoEmpresa: 'Mediana empresa',
+    tamanoEmpresa: 'PYME',
     aniosOperacion: '10 años',
     sitioWeb: 'https://www.reglasqa.pe',
     esCritico: false,
@@ -1573,6 +1573,12 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
     for (const p of padronProveedores) {
       const idUnidadPrincipal = mapaUnidades[p.unidades[0]?.codigo] || 1;
       const idIndustria = mapaIndustrias[p.codigoIndustria] || 1;
+      let tamanoEmpresaNormalizado = p.tamanoEmpresa;
+      if (tamanoEmpresaNormalizado === 'Mediana empresa') tamanoEmpresaNormalizado = 'PYME';
+      if (tamanoEmpresaNormalizado === 'Pequeña empresa') tamanoEmpresaNormalizado = 'MYPE';
+      if (!['MYPE', 'PYME', 'Gran empresa'].includes(tamanoEmpresaNormalizado)) {
+        tamanoEmpresaNormalizado = 'Gran empresa';
+      }
 
       const resProvExistente = await cliente.query(
         'SELECT id_proveedor FROM proveedor WHERE ruc = $1',
@@ -1602,7 +1608,7 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
            WHERE id_proveedor = $16`,
           [
             p.razonSocial, p.nombreComercial, p.direccionFiscal, p.departamento,
-            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, p.tamanoEmpresa,
+            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, tamanoEmpresaNormalizado,
             p.aniosOperacion, p.sitioWeb, p.esCritico, idUnidadPrincipal, idIndustria, idProveedor
           ]
         );
@@ -1617,7 +1623,7 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
            RETURNING id_proveedor`,
           [
             p.ruc, p.razonSocial, p.nombreComercial, p.direccionFiscal, p.departamento,
-            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, p.tamanoEmpresa,
+            p.representante, p.cargoRepresentante, p.telefono, p.correo, p.tipo, tamanoEmpresaNormalizado,
             p.aniosOperacion, p.sitioWeb, p.esCritico, idUnidadPrincipal, idIndustria
           ]
         );
@@ -1755,7 +1761,12 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
         departamento = COALESCE(NULLIF(departamento, ''), 'Lima'),
         cargo_representante = COALESCE(NULLIF(cargo_representante, ''), 'Gerente de Operaciones'),
         telefono = COALESCE(NULLIF(telefono, ''), '+51 1 6188000'),
-        tamano_empresa = COALESCE(NULLIF(tamano_empresa, ''), 'Gran empresa'),
+        tamano_empresa = CASE
+          WHEN tamano_empresa IN ('MYPE', 'PYME', 'Gran empresa') THEN tamano_empresa
+          WHEN tamano_empresa = 'Mediana empresa' THEN 'PYME'
+          WHEN tamano_empresa = 'Pequeña empresa' THEN 'MYPE'
+          ELSE 'Gran empresa'
+        END,
         anios_operacion = COALESCE(NULLIF(anios_operacion, ''), '15 años'),
         sitio_web = COALESCE(NULLIF(sitio_web, ''), 'https://www.intercorpretail.pe')
       WHERE direccion_fiscal IS NULL OR telefono IS NULL OR departamento IS NULL OR tamano_empresa IS NULL OR anios_operacion IS NULL OR sitio_web IS NULL
