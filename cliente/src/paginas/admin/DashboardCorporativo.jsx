@@ -68,7 +68,9 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
   }, []);
 
   const proveedoresParaMetricas = proveedores.filter((p) => {
-    const coincideUnidad = unidadSeleccionada === 'todas' || p.unidad === unidadSeleccionada;
+    const coincideUnidad = unidadSeleccionada === 'todas' ||
+      p.unidad === unidadSeleccionada ||
+      (Array.isArray(p.unidades) && p.unidades.some((uni) => uni.nombre === unidadSeleccionada));
     const coincideCritico = !soloCriticosActivo || p.esCritico;
     return coincideUnidad && coincideCritico;
   });
@@ -81,8 +83,18 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
   const promedioAvance = encuestasCompletadas > 0 ? Math.round(sumaPuntajes / encuestasCompletadas) : 0;
 
   const unidadesConMetricas = unidades.map((u) => {
-    const proveedoresDeEstaUnidad = proveedores.filter((p) => p.idUnidad === u.idUnidad);
-    const criticosDeEstaUnidad = proveedoresDeEstaUnidad.filter((p) => p.esCritico);
+    const proveedoresDeEstaUnidad = proveedores.filter((p) => {
+      if (Array.isArray(p.unidades) && p.unidades.length > 0) {
+        return p.unidades.some((uni) => Number(uni.idUnidad) === Number(u.idUnidad) || uni.nombre === u.nombre);
+      }
+      return p.unidad === u.nombre || Number(p.idUnidad) === Number(u.idUnidad);
+    });
+    const criticosDeEstaUnidad = proveedoresDeEstaUnidad.filter((p) => {
+      if (Array.isArray(p.unidadesCriticas) && p.unidadesCriticas.length > 0) {
+        return p.unidadesCriticas.some((crit) => Number(crit.idUnidad) === Number(u.idUnidad) || crit.nombre === u.nombre);
+      }
+      return p.esCritico;
+    });
     const evaluadosDeEstaUnidad = criticosDeEstaUnidad.filter((p) => p.estadoEvaluacion === 'Finalizado').length;
     const meta = criticosDeEstaUnidad.length;
     const porcentaje = meta > 0 ? Math.round((evaluadosDeEstaUnidad / meta) * 100) : 0;
