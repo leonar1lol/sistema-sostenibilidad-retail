@@ -10,22 +10,22 @@ import {
   eliminarArchivoR2
 } from '../../src/servicios/servicioR2.js';
 
-describe('Servicios Externos - Servicio de Correo Transaccional (Resend Mock)', () => {
+describe('Servicios Externos - Servicio de Correo Transaccional (Brevo Mock)', () => {
   const fetchOriginal = global.fetch;
 
-  it('retorna false limpiamente sin enviar correos si no existe CLAVE_API_RESEND', async () => {
-    const claveOriginal = process.env.CLAVE_API_RESEND;
-    delete process.env.CLAVE_API_RESEND;
+  it('retorna false limpiamente sin enviar correos si no existe CLAVE_API_BREVO', async () => {
+    const claveOriginal = process.env.CLAVE_API_BREVO;
+    delete process.env.CLAVE_API_BREVO;
 
     const enviado = await enviarCodigoAccesoOtp('proveedor@ejemplo.com', '123456');
     assert.equal(enviado, false);
 
-    process.env.CLAVE_API_RESEND = claveOriginal;
+    if (claveOriginal) process.env.CLAVE_API_BREVO = claveOriginal;
   });
 
   it('invoca la API de correo con estructura correcta de remitente y destinatario', async () => {
-    process.env.CLAVE_API_RESEND = 're_simulacion_clave_pruebas';
-    process.env.CORREO_REMITENTE_RESEND = 'notificaciones@intercorpretail.pe';
+    process.env.CLAVE_API_BREVO = 'clave_brevo_simulada_pruebas';
+    process.env.CORREO_REMITENTE_BREVO = 'notificaciones@intercorpretail.pe';
 
     let urlLlamada = null;
     let cuerpoEnviado = null;
@@ -41,16 +41,17 @@ describe('Servicios Externos - Servicio de Correo Transaccional (Resend Mock)', 
     const resultado = await enviarCodigoAccesoOtp('empresa@proveedor.pe', '654321');
 
     assert.equal(resultado, true);
-    assert.equal(urlLlamada, 'https://api.resend.com/emails');
-    assert.equal(cabecerasEnviadas.Authorization, 'Bearer re_simulacion_clave_pruebas');
-    assert.deepEqual(cuerpoEnviado.to, ['empresa@proveedor.pe']);
-    assert.match(cuerpoEnviado.html, /654321/);
+    assert.equal(urlLlamada, 'https://api.brevo.com/v3/smtp/email');
+    assert.equal(cabecerasEnviadas['api-key'], 'clave_brevo_simulada_pruebas');
+    assert.deepEqual(cuerpoEnviado.to, [{ email: 'empresa@proveedor.pe' }]);
+    assert.match(cuerpoEnviado.htmlContent, /654321/);
+    assert.equal(cuerpoEnviado.sender.email, 'notificaciones@intercorpretail.pe');
 
     global.fetch = fetchOriginal;
   });
 
   it('genera plantilla de reporte de resultados con recomendaciones dimensionales', async () => {
-    process.env.CLAVE_API_RESEND = 're_simulacion_clave_pruebas';
+    process.env.CLAVE_API_BREVO = 'clave_brevo_simulada_pruebas';
 
     let cuerpoEnviado = null;
     global.fetch = async (url, opciones) => {
@@ -70,8 +71,8 @@ describe('Servicios Externos - Servicio de Correo Transaccional (Resend Mock)', 
     );
 
     assert.equal(resultado, true);
-    assert.match(cuerpoEnviado.html, /85 \/ 100/);
-    assert.match(cuerpoEnviado.html, /huella hidrica/);
+    assert.match(cuerpoEnviado.htmlContent, /85 \/ 100/);
+    assert.match(cuerpoEnviado.htmlContent, /huella hidrica/);
 
     global.fetch = fetchOriginal;
   });
