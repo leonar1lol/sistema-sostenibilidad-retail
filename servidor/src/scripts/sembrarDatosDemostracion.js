@@ -1418,6 +1418,12 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
         );
       }
     }
+
+    await cliente.query(`
+      DELETE FROM proveedor_unidad_negocio WHERE id_unidad NOT IN (SELECT id_unidad FROM unidad_negocio WHERE codigo IN ('SPSA', 'PRO', 'OEC', 'RPZ', 'FAR', 'SIP', 'IRC'));
+      DELETE FROM unidad_negocio WHERE codigo NOT IN ('SPSA', 'PRO', 'OEC', 'RPZ', 'FAR', 'SIP', 'IRC');
+    `);
+
     const mapaUnidades = {};
     const resUnidades = await cliente.query('SELECT id_unidad, codigo FROM unidad_negocio');
     resUnidades.rows.forEach(r => { mapaUnidades[r.codigo] = r.id_unidad; });
