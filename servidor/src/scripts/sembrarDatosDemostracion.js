@@ -224,7 +224,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'SPSA', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 85, social: 80, etica: 88, laboral: 84, cadena: 78 }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20111222331',
@@ -688,7 +688,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'PRO', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 78, social: 80, etica: 84, laboral: 82, cadena: 75 }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20549281723',
@@ -730,7 +730,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'PRO', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 83, social: 81, etica: 87, laboral: 85, cadena: 79 }
+    evaluacion2026: { estado: 'Pendiente', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20603847291',
@@ -942,7 +942,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'RPZ', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 88, social: 80, etica: 84, laboral: 86, cadena: 78 }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20501928371',
@@ -958,12 +958,12 @@ const padronProveedores = [
     tamanoEmpresa: 'PYME',
     aniosOperacion: '17 años',
     sitioWeb: 'https://www.climacentral.pe',
-    esCritico: false,
+    esCritico: true,
     codigoIndustria: 'SGE',
     unidades: [
-      { codigo: 'RPZ', esCritico: false }
+      { codigo: 'RPZ', esCritico: true }
     ],
-    evaluacion2026: { estado: 'En proceso', ambiental: 75, social: 72, etica: 76, laboral: 78, cadena: 70 }
+    evaluacion2026: { estado: 'Pendiente', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20604819283',
@@ -1047,7 +1047,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'FAR', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 90, social: 93, etica: 96, laboral: 91, cadena: 89 }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20491823741',
@@ -1194,12 +1194,12 @@ const padronProveedores = [
     tamanoEmpresa: 'PYME',
     aniosOperacion: '18 años',
     sitioWeb: 'https://www.plastiperu.pe',
-    esCritico: false,
+    esCritico: true,
     codigoIndustria: 'ESS',
     unidades: [
-      { codigo: 'SIP', esCritico: false }
+      { codigo: 'SIP', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 69, social: 74, etica: 76, laboral: 78, cadena: 65 }
+    evaluacion2026: { estado: 'Finalizado', ambiental: 82, social: 80, etica: 84, laboral: 81, cadena: 78 }
   },
   {
     ruc: '20606918273',
@@ -1215,12 +1215,12 @@ const padronProveedores = [
     tamanoEmpresa: 'PYME',
     aniosOperacion: '7 años',
     sitioWeb: 'https://www.logistipallets.pe',
-    esCritico: false,
+    esCritico: true,
     codigoIndustria: 'LOG',
     unidades: [
-      { codigo: 'SIP', esCritico: false }
+      { codigo: 'SIP', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Pendiente', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20609988771',
@@ -1262,7 +1262,7 @@ const padronProveedores = [
     unidades: [
       { codigo: 'IRC', esCritico: true }
     ],
-    evaluacion2026: { estado: 'Finalizado', ambiental: 85, social: 84, etica: 90, laboral: 87, cadena: 90 }
+    evaluacion2026: { estado: 'En proceso', ambiental: null, social: null, etica: null, laboral: null, cadena: null }
   },
   {
     ruc: '20609988773',
@@ -1746,6 +1746,9 @@ export async function sembrarDatos(cadenaConexion = process.env.URL_BASE_DATOS) 
               }
             }
           }
+        } else {
+          await cliente.query('DELETE FROM puntaje_dimension WHERE id_evaluacion = $1', [idEvaluacion]);
+          await cliente.query('DELETE FROM respuesta WHERE id_evaluacion = $1', [idEvaluacion]);
         }
       }
     }
