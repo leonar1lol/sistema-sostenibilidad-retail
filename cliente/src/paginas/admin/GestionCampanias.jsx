@@ -504,6 +504,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
                 <input
                   type="text"
                   required
+                  maxLength={120}
                   placeholder="Ej: Homologación Anual ESG 2026"
                   value={nuevoNombre}
                   onChange={(e) => setNuevoNombre(e.target.value)}
@@ -518,6 +519,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
                 <input
                   type="text"
                   required
+                  maxLength={40}
                   placeholder="Ej: 2026-I o Q1-Q2 2026"
                   value={nuevoPeriodo}
                   onChange={(e) => setNuevoPeriodo(e.target.value)}

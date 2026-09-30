@@ -114,6 +114,15 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
 
     const idUnidadFinal = contextoEnlace?.idUnidad ? Number(contextoEnlace.idUnidad) : Number(idUnidad || 1);
 
+    let tamanoEmpresaNormalizado = tamanoEmpresa;
+    if (tamanoEmpresaNormalizado.includes('Micro') || tamanoEmpresaNormalizado.includes('Pequeña') || tamanoEmpresaNormalizado === 'MYPE') {
+      tamanoEmpresaNormalizado = 'MYPE';
+    } else if (tamanoEmpresaNormalizado.includes('Mediana') || tamanoEmpresaNormalizado === 'PYME') {
+      tamanoEmpresaNormalizado = 'PYME';
+    } else if (tamanoEmpresaNormalizado.includes('Gran') || tamanoEmpresaNormalizado === 'Gran empresa') {
+      tamanoEmpresaNormalizado = 'Gran empresa';
+    }
+
     setEnviando(true);
     try {
       const datos = await registrarProveedorPortalApi({
@@ -126,7 +135,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
         cargoRepresentante,
         telefono,
         sitioWeb,
-        tamanoEmpresa,
+        tamanoEmpresa: tamanoEmpresaNormalizado,
         aniosOperacion,
         idIndustria: Number(idIndustria),
         tipo,
@@ -143,7 +152,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
         cargoRepresentante,
         telefono,
         sitioWeb,
-        tamanoEmpresa,
+        tamanoEmpresa: tamanoEmpresaNormalizado,
         aniosOperacion,
         idIndustria,
         idUnidad: idUnidadFinal,
@@ -242,6 +251,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <input
                     type="text"
                     required
+                    maxLength={200}
                     placeholder="Distribuidora de Alimentos del Norte S.A.C."
                     value={razonSocial}
                     onChange={(e) => setRazonSocial(e.target.value)}
@@ -258,6 +268,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <Store className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
+                    maxLength={200}
                     placeholder="AlNorte Express"
                     value={nombreComercial}
                     onChange={(e) => setNombreComercial(e.target.value)}
@@ -274,6 +285,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <MapPin className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
+                    maxLength={255}
                     placeholder="Av. La Marina 2500, San Miguel"
                     value={direccionFiscal}
                     onChange={(e) => setDireccionFiscal(e.target.value)}
@@ -322,6 +334,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <input
                     type="text"
                     required
+                    maxLength={150}
                     placeholder="Carlos Eduardo Mendoza Rivera"
                     value={representante}
                     onChange={(e) => setRepresentante(e.target.value)}
@@ -339,6 +352,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <input
                     type="text"
                     required
+                    maxLength={120}
                     placeholder="Director de Operaciones"
                     value={cargoRepresentante}
                     onChange={(e) => setCargoRepresentante(e.target.value)}
@@ -375,6 +389,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   <Globe className="w-4 h-4 text-plataformaSecundario absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.8]" />
                   <input
                     type="text"
+                    maxLength={255}
                     placeholder="https://www.alnorteexpress.com.pe"
                     value={sitioWeb}
                     onChange={(e) => setSitioWeb(e.target.value)}
@@ -443,10 +458,9 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                   className="campo-select w-full text-xs"
                 >
                   <option value="">Seleccione tamaño de empresa</option>
-                  <option value="Microempresa (1 - 10 colaboradores)">Microempresa (1 - 10 colaboradores)</option>
-                  <option value="Pequeña empresa (11 - 50 colaboradores)">Pequeña empresa (11 - 50 colaboradores)</option>
-                  <option value="Mediana empresa (51 - 250 colaboradores)">Mediana empresa (51 - 250 colaboradores)</option>
-                  <option value="Gran empresa (Más de 250 colaboradores)">Gran empresa (Más de 250 colaboradores)</option>
+                  <option value="MYPE">MYPE (Micro y Pequeña Empresa: hasta 50 colaboradores)</option>
+                  <option value="PYME">PYME (Mediana Empresa: 51 a 250 colaboradores)</option>
+                  <option value="Gran empresa">Gran empresa (Más de 250 colaboradores)</option>
                 </select>
               </div>
 

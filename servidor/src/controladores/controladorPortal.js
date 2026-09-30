@@ -130,6 +130,17 @@ export const registrarProveedor = async (peticion, respuesta) => {
 
       const existentePorRuc = await cliente.query('SELECT id_proveedor, id_unidad FROM proveedor WHERE ruc = $1', [ruc]);
 
+      let tamanoEmpresaNormalizado = tamanoEmpresa ? String(tamanoEmpresa).trim() : null;
+      if (tamanoEmpresaNormalizado) {
+        if (tamanoEmpresaNormalizado.includes('Micro') || tamanoEmpresaNormalizado.includes('Pequeña') || tamanoEmpresaNormalizado === 'MYPE') {
+          tamanoEmpresaNormalizado = 'MYPE';
+        } else if (tamanoEmpresaNormalizado.includes('Mediana') || tamanoEmpresaNormalizado === 'PYME') {
+          tamanoEmpresaNormalizado = 'PYME';
+        } else {
+          tamanoEmpresaNormalizado = 'Gran empresa';
+        }
+      }
+
       if (existentePorRuc.rows.length > 0) {
         idProveedor = existentePorRuc.rows[0].id_proveedor;
         await cliente.query(
@@ -159,7 +170,7 @@ export const registrarProveedor = async (peticion, respuesta) => {
             departamento || null,
             cargoRepresentante || null,
             telefono || null,
-            tamanoEmpresa || null,
+            tamanoEmpresaNormalizado,
             aniosOperacion || null,
             sitioWeb || null,
             idProveedor
@@ -195,7 +206,7 @@ export const registrarProveedor = async (peticion, respuesta) => {
             departamento || null,
             cargoRepresentante || null,
             telefono || null,
-            tamanoEmpresa || null,
+            tamanoEmpresaNormalizado,
             aniosOperacion || null,
             sitioWeb || null
           ]
