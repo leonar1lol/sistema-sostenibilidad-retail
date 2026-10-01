@@ -165,6 +165,15 @@ export default function GestionProveedores({
     return coincideTexto && coincideUnidad && coincideCritico && coincideEstado;
   });
 
+  const coincidenciasRuc =
+    nuevoRuc.length >= 3 ? proveedores.filter((p) => p.ruc.includes(nuevoRuc)).slice(0, 5) : [];
+
+  const abrirFichaDesdeCoincidencia = (prov) => {
+    setMostrarModalNuevo(false);
+    setProveedorSeleccionado(prov);
+    abrirEdicionUnidades(prov);
+  };
+
   const mostrarAviso = (texto) => {
     setMensajeNotificacion(texto);
     setTimeout(() => setMensajeNotificacion(''), 3000);
@@ -841,17 +850,39 @@ export default function GestionProveedores({
             <div className="space-y-4 mb-6">
               <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">RUC (11 dígitos numéricos) *</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  required
-                  placeholder="Ej: 20100130204"
-                  maxLength={11}
-                  value={nuevoRuc}
-                  onChange={(e) => setNuevoRuc(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  className="campo-entrada w-full font-mono text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    required
+                    placeholder="Ej: 20100130204"
+                    maxLength={11}
+                    value={nuevoRuc}
+                    onChange={(e) => setNuevoRuc(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    className="campo-entrada w-full font-mono text-xs"
+                    autoComplete="off"
+                  />
+                  {coincidenciasRuc.length > 0 && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 rounded-md-token border border-amber-200/60 bg-amber-50 shadow-sm-token overflow-hidden">
+                      <div className="px-3 py-1.5 text-[11px] font-medium text-amber-800 bg-amber-100/60 flex items-center gap-1.5">
+                        <AlertCircle className="w-3 h-3" />
+                        <span>Ya existen proveedores con RUC similar:</span>
+                      </div>
+                      {coincidenciasRuc.map((p) => (
+                        <button
+                          key={p.idProveedor}
+                          type="button"
+                          onClick={() => abrirFichaDesdeCoincidencia(p)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-amber-100/60 transition-colors border-t border-amber-200/40 cursor-pointer"
+                        >
+                          <span className="font-mono font-semibold text-plataformaTexto">{p.ruc}</span>
+                          <span className="text-plataformaSecundario"> — {p.razonSocial}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
