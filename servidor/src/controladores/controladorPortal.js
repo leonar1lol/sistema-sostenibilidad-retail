@@ -263,6 +263,20 @@ export const registrarProveedor = async (peticion, respuesta) => {
   }
 };
 
+export const verificarRucExistente = async (peticion, respuesta) => {
+  const { ruc } = peticion.params;
+  if (!/^\d{11}$/.test(ruc)) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'El RUC debe tener 11 dígitos numéricos.' });
+  }
+
+  try {
+    const resultado = await consultarBaseDatos('SELECT 1 FROM proveedor WHERE ruc = $1', [ruc]);
+    return respuesta.status(200).json({ exito: true, existe: resultado.rows.length > 0 });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al verificar el RUC.' });
+  }
+};
+
 const cargarContextoCuestionario = async (idEvaluacion) => {
   const evaluacion = await consultarBaseDatos(
     `SELECT ev.id_evaluacion AS "idEvaluacion", ev.estado, ev.puntaje_total AS "puntajeTotal", ev.id_proveedor AS "idProveedor",

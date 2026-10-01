@@ -15,7 +15,7 @@ import {
   Check
 } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
-import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi } from '../../servicios/servicioApi.js';
+import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi, verificarRucPortalApi } from '../../servicios/servicioApi.js';
 
 export default function RegistroProveedor({ proveedorExistente, contextoEnlace, alCompletarRegistro }) {
   const [ruc, setRuc] = useState('');
@@ -40,6 +40,7 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
   const [errorConsentimiento, setErrorConsentimiento] = useState('');
   const [mensajeError, setMensajeError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [rucYaRegistrado, setRucYaRegistrado] = useState(false);
 
   useEffect(() => {
     obtenerDatosMaestrosPortalApi()
@@ -49,6 +50,22 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
       })
       .catch((error) => setMensajeError(error.message));
   }, []);
+
+  useEffect(() => {
+    if (ruc.length !== 11 || ruc === proveedorExistente?.ruc) {
+      setRucYaRegistrado(false);
+      return;
+    }
+    let cancelado = false;
+    verificarRucPortalApi(ruc)
+      .then((existe) => {
+        if (!cancelado) setRucYaRegistrado(existe);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [ruc, proveedorExistente?.ruc]);
 
   const manejarCambioRuc = (evento) => {
     const soloDigitos = evento.target.value.replace(/\D/g, '').slice(0, 11);
@@ -230,6 +247,16 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                     className="campo-entrada campo-entrada-icono w-full font-mono text-xs"
                   />
                 </div>
+                {rucYaRegistrado && (
+                  <p className="mt-1.5 text-[11px] text-amber-700 flex items-start gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      Este RUC ya está registrado en nuestra plataforma. Si usted representa esta empresa, haga clic en
+                      "1. Acceso" arriba e inicie sesión con el correo institucional ya registrado en lugar de completar
+                      este formulario.
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div>

@@ -4,6 +4,7 @@ import {
   solicitarAcceso,
   verificarAcceso,
   registrarProveedor,
+  verificarRucExistente,
   obtenerCuestionario,
   guardarRespuesta,
   finalizarEvaluacion,
@@ -22,6 +23,7 @@ export const enrutadorPortal = Router();
 enrutadorPortal.post('/acceso', limitadorSolicitudOtp, solicitarAcceso);
 enrutadorPortal.post('/verificar', limitadorVerificacionOtp, verificarAcceso);
 enrutadorPortal.post('/registro', verificarSesionProveedor, registrarProveedor);
+enrutadorPortal.get('/ruc/:ruc', verificarSesionProveedor, verificarRucExistente);
 
 enrutadorPortal.get('/cuestionario', verificarSesionProveedor, requiereEvaluacionAsignada, obtenerCuestionario);
 enrutadorPortal.post('/respuesta', verificarSesionProveedor, requiereEvaluacionAsignada, guardarRespuesta);
