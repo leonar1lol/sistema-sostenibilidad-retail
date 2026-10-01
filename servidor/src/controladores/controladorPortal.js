@@ -263,17 +263,28 @@ export const registrarProveedor = async (peticion, respuesta) => {
   }
 };
 
-export const verificarRucExistente = async (peticion, respuesta) => {
-  const { ruc } = peticion.params;
-  if (!/^\d{11}$/.test(ruc)) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'El RUC debe tener 11 dígitos numéricos.' });
+export const buscarCoincidenciasRuc = async (peticion, respuesta) => {
+  const { fragmento } = peticion.params;
+  if (!/^\d{3,11}$/.test(fragmento)) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Ingrese al menos 3 dígitos del RUC.' });
   }
 
   try {
-    const resultado = await consultarBaseDatos('SELECT 1 FROM proveedor WHERE ruc = $1', [ruc]);
-    return respuesta.status(200).json({ exito: true, existe: resultado.rows.length > 0 });
+    const resultado = await consultarBaseDatos(
+      `SELECT id_proveedor AS "idProveedor", ruc, razon_social AS "razonSocial",
+              nombre_comercial AS "nombreComercial", direccion_fiscal AS "direccionFiscal",
+              departamento, representante, cargo_representante AS "cargoRepresentante",
+              telefono, tipo, tamano_empresa AS "tamanoEmpresa", anios_operacion AS "aniosOperacion",
+              sitio_web AS "sitioWeb", id_industria AS "idIndustria", id_unidad AS "idUnidad"
+       FROM proveedor
+       WHERE ruc LIKE '%' || $1 || '%'
+       ORDER BY ruc ASC
+       LIMIT 5`,
+      [fragmento]
+    );
+    return respuesta.status(200).json({ exito: true, coincidencias: resultado.rows });
   } catch (error) {
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al verificar el RUC.' });
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al buscar coincidencias de RUC.' });
   }
 };
 

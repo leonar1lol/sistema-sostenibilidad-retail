@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
   User,
@@ -15,7 +15,7 @@ import {
   Check
 } from 'lucide-react';
 import TarjetaBento from '../../componentes/TarjetaBento.jsx';
-import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi, verificarRucPortalApi } from '../../servicios/servicioApi.js';
+import { obtenerDatosMaestrosPortalApi, registrarProveedorPortalApi, buscarCoincidenciasRucPortalApi } from '../../servicios/servicioApi.js';
 
 export default function RegistroProveedor({ proveedorExistente, contextoEnlace, alCompletarRegistro }) {
   const [ruc, setRuc] = useState('');
@@ -40,7 +40,8 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
   const [errorConsentimiento, setErrorConsentimiento] = useState('');
   const [mensajeError, setMensajeError] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [rucYaRegistrado, setRucYaRegistrado] = useState(false);
+  const [coincidenciasRuc, setCoincidenciasRuc] = useState([]);
+  const seleccionManualRef = useRef(false);
 
   useEffect(() => {
     obtenerDatosMaestrosPortalApi()
@@ -52,14 +53,18 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
   }, []);
 
   useEffect(() => {
-    if (ruc.length !== 11 || ruc === proveedorExistente?.ruc) {
-      setRucYaRegistrado(false);
+    if (seleccionManualRef.current) {
+      seleccionManualRef.current = false;
+      return;
+    }
+    if (ruc.length < 3 || ruc === proveedorExistente?.ruc) {
+      setCoincidenciasRuc([]);
       return;
     }
     let cancelado = false;
-    verificarRucPortalApi(ruc)
-      .then((existe) => {
-        if (!cancelado) setRucYaRegistrado(existe);
+    buscarCoincidenciasRucPortalApi(ruc)
+      .then((coincidencias) => {
+        if (!cancelado) setCoincidenciasRuc(coincidencias);
       })
       .catch(() => {});
     return () => {
@@ -70,6 +75,28 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
   const manejarCambioRuc = (evento) => {
     const soloDigitos = evento.target.value.replace(/\D/g, '').slice(0, 11);
     setRuc(soloDigitos);
+    setMensajeError('');
+  };
+
+  const seleccionarCoincidenciaRuc = (coincidencia) => {
+    seleccionManualRef.current = true;
+    setRuc(coincidencia.ruc);
+    setRazonSocial(coincidencia.razonSocial || '');
+    setNombreComercial(coincidencia.nombreComercial || '');
+    setDireccionFiscal(coincidencia.direccionFiscal || '');
+    setDepartamento(coincidencia.departamento || '');
+    setRepresentante(coincidencia.representante || '');
+    setCargoRepresentante(coincidencia.cargoRepresentante || '');
+    setTelefono((coincidencia.telefono || '').replace(/\D/g, '').slice(0, 9));
+    setSitioWeb(coincidencia.sitioWeb || '');
+    setTamanoEmpresa(coincidencia.tamanoEmpresa || '');
+    setAniosOperacion(coincidencia.aniosOperacion || '');
+    setIdIndustria(coincidencia.idIndustria ? String(coincidencia.idIndustria) : '');
+    setTipo(coincidencia.tipo === 'No retail' ? 'No retail' : 'Retail');
+    if (!contextoEnlace?.idUnidad && coincidencia.idUnidad) {
+      setIdUnidad(String(coincidencia.idUnidad));
+    }
+    setCoincidenciasRuc([]);
     setMensajeError('');
   };
 
@@ -245,18 +272,27 @@ export default function RegistroProveedor({ proveedorExistente, contextoEnlace, 
                     value={ruc}
                     onChange={manejarCambioRuc}
                     className="campo-entrada campo-entrada-icono w-full font-mono text-xs"
+                    autoComplete="off"
                   />
+                  {coincidenciasRuc.length > 0 && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 rounded-md-token border border-plataformaAzul/30 bg-white shadow-sm-token overflow-hidden">
+                      <div className="px-3 py-1.5 text-[11px] font-medium text-plataformaAzul bg-blue-50">
+                        Proveedores ya registrados con RUC similar — seleccione para autocompletar:
+                      </div>
+                      {coincidenciasRuc.map((c) => (
+                        <button
+                          key={c.idProveedor}
+                          type="button"
+                          onClick={() => seleccionarCoincidenciaRuc(c)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors border-t border-black/[0.04] cursor-pointer"
+                        >
+                          <span className="font-mono font-semibold text-plataformaTexto">{c.ruc}</span>
+                          <span className="text-plataformaSecundario"> — {c.razonSocial}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {rucYaRegistrado && (
-                  <p className="mt-1.5 text-[11px] text-amber-700 flex items-start gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>
-                      Este RUC ya está registrado en nuestra plataforma. Si usted representa esta empresa, haga clic en
-                      "1. Acceso" arriba e inicie sesión con el correo institucional ya registrado en lugar de completar
-                      este formulario.
-                    </span>
-                  </p>
-                )}
               </div>
 
               <div>

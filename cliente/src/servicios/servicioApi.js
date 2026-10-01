@@ -77,9 +77,9 @@ export async function registrarProveedorPortalApi(datosRegistro) {
   return datos;
 }
 
-export async function verificarRucPortalApi(ruc) {
-  const datos = await peticionPortal(`/portal/ruc/${ruc}`);
-  return datos.existe;
+export async function buscarCoincidenciasRucPortalApi(fragmento) {
+  const datos = await peticionPortal(`/portal/ruc-coincidencias/${fragmento}`);
+  return datos.coincidencias;
 }
 
 export async function obtenerCuestionarioPortalApi() {
