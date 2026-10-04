@@ -13,7 +13,8 @@ import {
   Eye,
   EyeOff,
   Slash,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
 import {
   listarItemsBancoApi,
@@ -44,6 +45,7 @@ export default function BancoPreguntas() {
   const [mostrarModalNuevaRegla, setMostrarModalNuevaRegla] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
   const [mensajeError, setMensajeError] = useState('');
+  const [dimensionesColapsadas, setDimensionesColapsadas] = useState({});
 
   const [nuevoCodigo, setNuevoCodigo] = useState('');
   const [nuevaIdDimension, setNuevaIdDimension] = useState('');
@@ -88,6 +90,10 @@ export default function BancoPreguntas() {
   const mostrarAviso = (texto) => {
     setMensajeExito(texto);
     setTimeout(() => setMensajeExito(''), 3000);
+  };
+
+  const alternarColapsoDimension = (idDimension) => {
+    setDimensionesColapsadas((actual) => ({ ...actual, [idDimension]: !actual[idDimension] }));
   };
 
   const itemsFiltrados = items.filter((item) => {
@@ -316,81 +322,113 @@ export default function BancoPreguntas() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {itemsFiltrados.map((item) => {
-              const esDestinoDeRegla = reglas.some((r) => r.idItemDestino === item.idItem);
-              const esOrigenDeRegla = reglas.some((r) => r.idItemOrigen === item.idItem);
-              return (
-                <div
-                  key={item.idItem}
-                  className="superficie-tarjeta rounded-lg-token p-6 flex flex-col gap-4 hover:border-black/[0.12] transition-colors"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md-token bg-plataformaAzul/10 text-plataformaAzul">
-                          {item.codigo}
+          <div className="flex flex-col gap-5">
+            {dimensiones
+              .filter((d) => filtroDimension === 'todas' || d.codigo === filtroDimension)
+              .map((d) => {
+                const itemsDeDimension = itemsFiltrados.filter((i) => i.codigoDimension === d.codigo);
+                if (busquedaItem.trim() !== '' && itemsDeDimension.length === 0) return null;
+                const colapsada = Boolean(dimensionesColapsadas[d.idDimension]);
+                return (
+                  <div key={d.idDimension} className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => alternarColapsoDimension(d.idDimension)}
+                      className="w-full flex items-center justify-between px-5 py-3 rounded-lg-token bg-plataformaAzul/5 border border-plataformaAzul/15 cursor-pointer hover:bg-plataformaAzul/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-cuerpo font-bold text-plataformaAzul">{d.nombre}</span>
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white border border-plataformaAzul/20 text-plataformaAzul">
+                          {itemsDeDimension.length}
                         </span>
-                        <span className="text-xs font-semibold text-plataformaTexto">
-                          {item.nombreDimension}
-                        </span>
-                        {esDestinoDeRegla && (
-                          <span className="insignia-advertencia inline-flex items-center gap-1 text-[10px]">
-                            <GitBranch className="w-3 h-3" /> Condicionado por regla
-                          </span>
-                        )}
-                        {esOrigenDeRegla && (
-                          <span className="insignia-info inline-flex items-center gap-1 text-[10px]">
-                            <Sparkles className="w-3 h-3" /> Detona regla
-                          </span>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-plataformaAzul transition-transform ${colapsada ? '' : 'rotate-180'}`} />
+                    </button>
+
+                    {!colapsada && (
+                      <div className="flex flex-col gap-4">
+                        {itemsDeDimension.map((item) => {
+                          const esDestinoDeRegla = reglas.some((r) => r.idItemDestino === item.idItem);
+                          const esOrigenDeRegla = reglas.some((r) => r.idItemOrigen === item.idItem);
+                          return (
+                            <div
+                              key={item.idItem}
+                              className="superficie-tarjeta rounded-lg-token p-6 flex flex-col gap-4 hover:border-black/[0.12] transition-colors"
+                            >
+                              <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md-token bg-plataformaAzul/10 text-plataformaAzul">
+                                      {item.codigo}
+                                    </span>
+                                    {esDestinoDeRegla && (
+                                      <span className="insignia-advertencia inline-flex items-center gap-1 text-[10px]">
+                                        <GitBranch className="w-3 h-3" /> Condicionado por regla
+                                      </span>
+                                    )}
+                                    {esOrigenDeRegla && (
+                                      <span className="insignia-info inline-flex items-center gap-1 text-[10px]">
+                                        <Sparkles className="w-3 h-3" /> Detona regla
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="text-cuerpo font-medium text-plataformaTexto leading-snug">
+                                    {item.enunciado}
+                                  </h4>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md-token bg-black/[0.03] border border-black/[0.05] text-plataformaSecundario">
+                                    Peso: {item.peso}x
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2 pt-3 border-t border-black/[0.04]">
+                                <span className="text-etiqueta text-plataformaSecundario block">
+                                  Alternativas parametrizadas y escalas de puntuación:
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {item.alternativas.map((alt) => (
+                                    <div
+                                      key={alt.idAlternativa}
+                                      className="p-3 rounded-md-token bg-black/[0.015] border border-black/[0.04] text-xs flex items-center justify-between gap-3"
+                                    >
+                                      <span className="text-plataformaTexto font-medium">{alt.texto}</span>
+                                      <span className="font-mono font-bold text-plataformaAzul bg-plataformaAzul/10 px-2 py-0.5 rounded-md-token shrink-0">
+                                        {alt.puntaje} pts
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {item.industrias && item.industrias.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                                  <span className="text-[11px] text-plataformaSecundario">Aplica a:</span>
+                                  {item.industrias.map((ind) => (
+                                    <span key={ind.idIndustria} className="insignia-neutra text-[10px]">
+                                      {ind.nombre}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {itemsDeDimension.length === 0 && (
+                          <div className="superficie-tarjeta rounded-lg-token p-6 text-center text-cuerpo-pequeno text-plataformaSecundario">
+                            No hay preguntas en esta dimensión todavía.
+                          </div>
                         )}
                       </div>
-                      <h4 className="text-cuerpo font-medium text-plataformaTexto leading-snug">
-                        {item.enunciado}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md-token bg-black/[0.03] border border-black/[0.05] text-plataformaSecundario">
-                        Peso: {item.peso}x
-                      </span>
-                    </div>
+                    )}
                   </div>
+                );
+              })}
 
-                  <div className="space-y-2 pt-3 border-t border-black/[0.04]">
-                    <span className="text-etiqueta text-plataformaSecundario block">
-                      Alternativas parametrizadas y escalas de puntuación:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {item.alternativas.map((alt) => (
-                        <div
-                          key={alt.idAlternativa}
-                          className="p-3 rounded-md-token bg-black/[0.015] border border-black/[0.04] text-xs flex items-center justify-between gap-3"
-                        >
-                          <span className="text-plataformaTexto font-medium">{alt.texto}</span>
-                          <span className="font-mono font-bold text-plataformaAzul bg-plataformaAzul/10 px-2 py-0.5 rounded-md-token shrink-0">
-                            {alt.puntaje} pts
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {item.industrias && item.industrias.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                      <span className="text-[11px] text-plataformaSecundario">Aplica a:</span>
-                      {item.industrias.map((ind) => (
-                        <span key={ind.idIndustria} className="insignia-neutra text-[10px]">
-                          {ind.nombre}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {itemsFiltrados.length === 0 && (
+            {itemsFiltrados.length === 0 && busquedaItem.trim() !== '' && (
               <div className="superficie-tarjeta rounded-lg-token p-12 text-center text-cuerpo-pequeno text-plataformaSecundario">
                 No se encontraron preguntas que coincidan con los criterios especificados.
               </div>
@@ -503,7 +541,7 @@ export default function BancoPreguntas() {
                   <input
                     type="text"
                     required
-                    placeholder="Ej: ETI-18"
+                    placeholder="Ej: ECO-18"
                     value={nuevoCodigo}
                     onChange={(e) => setNuevoCodigo(e.target.value.toUpperCase())}
                     className="campo-entrada w-full font-mono text-xs"

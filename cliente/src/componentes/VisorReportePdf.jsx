@@ -251,11 +251,9 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-8">
           {[
+            { dim: 'Dimensión Económica', puntaje: p.dimensiones?.ECO ?? 85 },
             { dim: 'Dimensión Ambiental', puntaje: p.dimensiones?.AMB ?? 82 },
-            { dim: 'Dimensión Social y Comunitaria', puntaje: p.dimensiones?.SOC ?? 85 },
-            { dim: 'Ética y Gobernanza Corporativa', puntaje: p.dimensiones?.ETI ?? 90 },
-            { dim: 'Prácticas Laborales y DDHH', puntaje: p.dimensiones?.LAB ?? 78 },
-            { dim: 'Cadena de Suministro Responsable', puntaje: p.dimensiones?.CAD ?? 75 }
+            { dim: 'Dimensión Social', puntaje: p.dimensiones?.SOC ?? 85 }
           ].map((item, i) => (
             <div key={i} className="flex justify-between items-center border-b border-slate-200 pb-1.5 text-xs">
               <span className="font-medium text-slate-700">{item.dim}</span>
@@ -357,7 +355,7 @@ const VisorReportePdf = ({ tipoReporte, datos, proveedorSeleccionado, alCerrar }
 
           <div className="bloque-diagnostico p-4 bg-rose-50 border border-rose-200 rounded-lg">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-rose-900">Cadena de Suministro • Debida Diligencia de Subcontratas</span>
+              <span className="text-xs font-bold text-rose-900">Económico • Debida Diligencia de Subcontratas</span>
               <span className="text-xs font-bold font-mono text-rose-800">50 / 100</span>
             </div>
             <p className="text-xs text-rose-800 mt-1">

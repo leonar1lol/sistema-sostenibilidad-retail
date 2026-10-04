@@ -9,11 +9,9 @@ export const exportarProveedoresAExcel = (proveedores) => {
     'Crítico',
     'Estado de Evaluación',
     'Puntaje General',
+    'Económico',
     'Ambiental',
     'Social',
-    'Ética y Gobernanza',
-    'Laboral',
-    'Cadena de Suministro',
     'Fecha de Evaluación'
   ];
 
@@ -31,11 +29,9 @@ export const exportarProveedoresAExcel = (proveedores) => {
       prov.esCritico ? '"SÍ"' : '"NO"',
       celda(prov.estadoEvaluacion || 'Sin evaluación'),
       prov.puntajeTotal !== null && prov.puntajeTotal !== undefined ? Number(prov.puntajeTotal) : '""',
+      dim.ECO ?? '""',
       dim.AMB ?? '""',
       dim.SOC ?? '""',
-      dim.ETI ?? '""',
-      dim.LAB ?? '""',
-      dim.CAD ?? '""',
       celda(prov.fechaEvaluacion ? new Date(prov.fechaEvaluacion).toLocaleDateString('es-PE') : '-')
     ];
   });

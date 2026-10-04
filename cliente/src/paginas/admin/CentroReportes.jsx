@@ -327,11 +327,9 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
             className="campo-select min-w-[160px]"
           >
             <option value="Todas">Todas las Dimensiones</option>
+            <option value="ECO">Económico (ECO)</option>
             <option value="AMB">Ambiental (AMB)</option>
-            <option value="SOC">Social y Comunitaria (SOC)</option>
-            <option value="ETI">Ética y Gobernanza (ETI)</option>
-            <option value="LAB">Prácticas Laborales (LAB)</option>
-            <option value="CAD">Cadena de Suministro (CAD)</option>
+            <option value="SOC">Social (SOC)</option>
           </select>
 
           <select
@@ -392,7 +390,7 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
               Certificado Oficial de Homologación Individual
             </h3>
             <p className="text-xs text-plataformaSecundario mb-4 leading-relaxed">
-              Ficha oficial con membrete corporativo, sello de homologación, radar de las 5 dimensiones ESG, código único y firmas de auditoría.
+              Ficha oficial con membrete corporativo, sello de homologación, radar de las 3 dimensiones ESG, código único y firmas de auditoría.
             </p>
 
             <div className="mb-4">

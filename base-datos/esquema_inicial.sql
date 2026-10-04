@@ -228,12 +228,12 @@ INSERT INTO industria (codigo, nombre) VALUES
 ('ESS', 'Envases y suministros')
 ON CONFLICT (codigo) DO NOTHING;
 
+-- Dimensiones ASG alineadas a las mismas 3 dimensiones que usa Intercorp Retail
+-- (Económico, Ambiental, Social: ver evaluacionproveedores.intercorpretail.pe/admin/questions).
 INSERT INTO dimension (codigo, nombre, peso) VALUES
+('ECO', 'Económico', 0.35),
 ('AMB', 'Ambiental', 0.25),
-('SOC', 'Social', 0.20),
-('ETI', 'Ética y Gobernanza', 0.25),
-('LAB', 'Laboral', 0.20),
-('CAD', 'Cadena de Suministro', 0.10)
+('SOC', 'Social', 0.40)
 ON CONFLICT (codigo) DO NOTHING;
 
 INSERT INTO campania (nombre, periodo, estado) VALUES
@@ -246,9 +246,9 @@ FROM (VALUES
   ('AMB', 70.00, 'Formalizar e implementar la política documentada de gestión integral de residuos y reciclaje.'),
   ('AMB', 75.00, 'Iniciar la medición y reporte anual auditado de la huella de carbono operacional.'),
   ('SOC', 70.00, 'Establecer un programa permanente con presupuesto e indicadores de impacto comunitario.'),
-  ('ETI', 80.00, 'Implementar un canal formalizado y anónimo de denuncias gestionado de forma independiente.'),
-  ('LAB', 85.00, 'Asegurar la plena formalización laboral y un sistema de control de jornadas seguras.'),
-  ('CAD', 70.00, 'Extender los criterios de sostenibilidad a los proveedores de segundo nivel de la cadena de suministro.')
+  ('SOC', 85.00, 'Asegurar la plena formalización laboral y un sistema de control de jornadas seguras.'),
+  ('ECO', 80.00, 'Implementar un canal formalizado y anónimo de denuncias gestionado de forma independiente.'),
+  ('ECO', 70.00, 'Extender los criterios de sostenibilidad a los proveedores de segundo nivel de la cadena de suministro.')
 ) AS v(codigo_dimension, umbral, texto)
 JOIN dimension d ON d.codigo = v.codigo_dimension
 WHERE NOT EXISTS (SELECT 1 FROM recomendacion r WHERE r.texto = v.texto);

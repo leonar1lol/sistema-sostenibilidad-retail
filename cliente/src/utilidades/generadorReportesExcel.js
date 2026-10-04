@@ -36,7 +36,7 @@ export const exportarPadronGeneralExcel = (proveedores, filtrosAplicados) => {
     lineas.push(escaparValorCsv('Periodo filtrado') + delimitador + escaparValorCsv(filtrosAplicados?.periodo || 'Todos'));
     lineas.push('');
     
-    const cabeceras = ['RUC', 'Razón Social', 'Nombre Comercial', 'Unidad de Negocio', 'Industria', 'Representante Legal', 'Correo Electrónico', 'Teléfono', 'Criticidad de Negocio', 'Estado de Homologación', 'Puntaje General ESG', 'Nivel', 'Dimensión Ambiental', 'Dimensión Social', 'Dimensión Ética', 'Dimensión Laboral', 'Cadena de Suministro', 'Fecha de Evaluación'];
+    const cabeceras = ['RUC', 'Razón Social', 'Nombre Comercial', 'Unidad de Negocio', 'Industria', 'Representante Legal', 'Correo Electrónico', 'Teléfono', 'Criticidad de Negocio', 'Estado de Homologación', 'Puntaje General ESG', 'Nivel', 'Dimensión Económica', 'Dimensión Ambiental', 'Dimensión Social', 'Fecha de Evaluación'];
     lineas.push(cabeceras.map(escaparValorCsv).join(delimitador));
     
     if (proveedores) {
@@ -55,11 +55,9 @@ export const exportarPadronGeneralExcel = (proveedores, filtrosAplicados) => {
                 proveedor.estadoEvaluacion || proveedor.estadoHomologacion || 'Pendiente',
                 proveedor.puntajeTotal ?? proveedor.puntajeGeneral ?? '',
                 proveedor.nivel ?? proveedor.nivelObtenido ?? (proveedor.puntajeTotal >= 75 ? 'Avanzado' : proveedor.puntajeTotal >= 60 ? 'Intermedio' : 'Inicial'),
+                dim.ECO ?? proveedor.dimensionEconomica ?? '',
                 dim.AMB ?? proveedor.dimensionAmbiental ?? '',
                 dim.SOC ?? proveedor.dimensionSocial ?? '',
-                dim.ETI ?? proveedor.dimensionEtica ?? '',
-                dim.LAB ?? proveedor.dimensionLaboral ?? '',
-                dim.CAD ?? proveedor.cadenaSuministro ?? '',
                 proveedor.fechaEvaluacion ? new Date(proveedor.fechaEvaluacion).toLocaleDateString('es-PE') : ''
             ];
             lineas.push(fila.map(escaparValorCsv).join(delimitador));
@@ -160,11 +158,9 @@ export const exportarCertificadoIndividualExcel = (proveedor, evaluacion) => {
     lineas.push(cabeceras.map(escaparValorCsv).join(delimitador));
     
     const dimensiones = evaluacion?.dimensiones || [
+        { codigo: 'ECO', nombre: 'Dimensión Económica', peso: '35%', puntaje: evaluacion?.dimensiones?.ECO || '85', estado: 'Aprobado' },
         { codigo: 'AMB', nombre: 'Dimensión Ambiental', peso: '25%', puntaje: evaluacion?.dimensiones?.AMB || '78', estado: 'Aprobado' },
-        { codigo: 'SOC', nombre: 'Dimensión Social y Comunidad', peso: '20%', puntaje: evaluacion?.dimensiones?.SOC || '82', estado: 'Aprobado' },
-        { codigo: 'ETI', nombre: 'Ética Corporativa y Anticorrupción', peso: '20%', puntaje: evaluacion?.dimensiones?.ETI || '90', estado: 'Aprobado' },
-        { codigo: 'LAB', nombre: 'Prácticas Laborales y DDHH', peso: '20%', puntaje: evaluacion?.dimensiones?.LAB || '74', estado: 'Aprobado' },
-        { codigo: 'CAD', nombre: 'Cadena de Suministro Responsable', peso: '15%', puntaje: evaluacion?.dimensiones?.CAD || '70', estado: 'Aprobado' }
+        { codigo: 'SOC', nombre: 'Dimensión Social', peso: '40%', puntaje: evaluacion?.dimensiones?.SOC || '82', estado: 'Aprobado' }
     ];
 
     dimensiones.forEach(dim => {
@@ -243,11 +239,9 @@ export const exportarAnalisisBrechasExcel = (proveedores) => {
         proveedores.forEach(proveedor => {
             const dim = proveedor.dimensiones || {};
             const dimensionesClave = [
+                { codigo: 'ECO', nombre: 'Económico', puntaje: dim.ECO ?? 80, recomendacion: 'Fortalecer el gobierno corporativo, la gestión de riesgos del negocio y de la cadena de proveedores.' },
                 { codigo: 'AMB', nombre: 'Ambiental', puntaje: dim.AMB ?? 75, recomendacion: 'Implementar política de reducción de huella hídrica y residuos sólidos.' },
-                { codigo: 'SOC', nombre: 'Social', puntaje: dim.SOC ?? 70, recomendacion: 'Establecer programas comunitarios y política de equidad de género.' },
-                { codigo: 'ETI', nombre: 'Ética y Cumplimiento', puntaje: dim.ETI ?? 85, recomendacion: 'Publicar canal de denuncias ético con anonimato garantizado.' },
-                { codigo: 'LAB', nombre: 'Laboral y SST', puntaje: dim.LAB ?? 58, recomendacion: 'Actualizar matriz IPERC y garantizar comités paritarios de SST.' },
-                { codigo: 'CAD', nombre: 'Cadena de Suministro', puntaje: dim.CAD ?? 55, recomendacion: 'Exigir cláusulas de sostenibilidad y debida diligencia a proveedores subcontratados.' }
+                { codigo: 'SOC', nombre: 'Social', puntaje: dim.SOC ?? 70, recomendacion: 'Establecer programas comunitarios, prácticas laborales justas y política de equidad de género.' }
             ];
 
             dimensionesClave.filter(d => Number(d.puntaje) < 65).forEach(d => {
