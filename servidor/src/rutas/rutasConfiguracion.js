@@ -8,6 +8,7 @@ import {
   crearIndustria,
   editarIndustria,
   listarDimensiones,
+  editarDimension,
   actualizarPesosDimensiones
 } from '../controladores/controladorConfiguracion.js';
 
@@ -25,3 +26,4 @@ enrutadorConfiguracion.put('/industrias/:id', requierePermiso('configurar_banco_
 
 enrutadorConfiguracion.get('/dimensiones', listarDimensiones);
 enrutadorConfiguracion.put('/dimensiones', requierePermiso('configurar_banco_items'), actualizarPesosDimensiones);
+enrutadorConfiguracion.put('/dimensiones/:id', requierePermiso('configurar_banco_items'), editarDimension);

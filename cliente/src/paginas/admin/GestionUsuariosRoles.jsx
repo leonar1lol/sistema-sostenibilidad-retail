@@ -372,8 +372,7 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
                 {permisos.map((permiso) => (
                   <tr key={permiso.idPermiso} className="hover:bg-black/[0.015]">
                     <td className="py-3 px-4 text-xs font-medium text-plataformaTexto">
-                      <div>{permiso.descripcion}</div>
-                      <span className="text-[10px] font-mono text-plataformaSecundario">{permiso.codigo}</span>
+                      {permiso.descripcion}
                     </td>
                     {roles.map((rol) => {
                       const asignado = tienePermiso(rol.idRol, permiso.idPermiso);

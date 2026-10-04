@@ -283,9 +283,6 @@ export default function CuestionarioDinamico({ datosProveedor, alFinalizarCuesti
                 <span className="insignia-info font-mono font-bold">
                   Pregunta {indice + 1} de {itemsDeDimensionActiva.length}
                 </span>
-                <span className="text-subtexto text-plataformaSecundario font-mono px-2 bg-black/[0.03] rounded">
-                  {item.codigo}
-                </span>
                 {deshabilitado && (
                   <span className="insignia-neutra flex items-center gap-1">
                     <Lock className="w-3 h-3" /> Deshabilitado por regla condicional

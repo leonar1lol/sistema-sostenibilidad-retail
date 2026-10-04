@@ -4,7 +4,8 @@ import {
   Edit2,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Building2
 } from 'lucide-react';
 import {
   listarUnidadesApi,
@@ -14,6 +15,7 @@ import {
   crearIndustriaApi,
   editarIndustriaApi,
   listarDimensionesApi,
+  editarDimensionApi,
   actualizarPesosDimensionesApi
 } from '../../servicios/servicioApi.js';
 
@@ -27,13 +29,14 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
 
   const [unidadEdicion, setUnidadEdicion] = useState(null);
   const [mostrarModalNuevaUnidad, setMostrarModalNuevaUnidad] = useState(false);
-  const [nuevoCodigoUnidad, setNuevoCodigoUnidad] = useState('');
   const [nuevoNombreUnidad, setNuevoNombreUnidad] = useState('');
   const [nuevoGerenteUnidad, setNuevoGerenteUnidad] = useState('');
 
+  const [industriaEdicion, setIndustriaEdicion] = useState(null);
   const [mostrarModalNuevaIndustria, setMostrarModalNuevaIndustria] = useState(false);
-  const [nuevoCodigoIndustria, setNuevoCodigoIndustria] = useState('');
   const [nuevoNombreIndustria, setNuevoNombreIndustria] = useState('');
+
+  const [dimensionEdicion, setDimensionEdicion] = useState(null);
 
   const [mensajeAviso, setMensajeAviso] = useState('');
   const [mensajeError, setMensajeError] = useState('');
@@ -88,17 +91,16 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
   const agregarNuevaUnidad = async (e) => {
     e.preventDefault();
     try {
-      await crearUnidadApi({ codigo: nuevoCodigoUnidad, nombre: nuevoNombreUnidad, gerente: nuevoGerenteUnidad });
+      await crearUnidadApi({ nombre: nuevoNombreUnidad, gerente: nuevoGerenteUnidad });
       await cargarDatos();
       if (alRegistrarAuditoria) {
         alRegistrarAuditoria({
           accion: 'Registro de nueva unidad de negocio',
           modulo: 'Configuración Paramétrica',
-          detalles: `Incorporada unidad ${nuevoNombreUnidad} (${nuevoCodigoUnidad})`
+          detalles: `Incorporada unidad ${nuevoNombreUnidad}`
         });
       }
       setMostrarModalNuevaUnidad(false);
-      setNuevoCodigoUnidad('');
       setNuevoNombreUnidad('');
       setNuevoGerenteUnidad('');
       mostrarAviso('Nueva unidad de negocio incorporada.');
@@ -110,19 +112,56 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
   const agregarNuevaIndustria = async (e) => {
     e.preventDefault();
     try {
-      await crearIndustriaApi({ codigo: nuevoCodigoIndustria, nombre: nuevoNombreIndustria });
+      await crearIndustriaApi({ nombre: nuevoNombreIndustria });
       await cargarDatos();
       if (alRegistrarAuditoria) {
         alRegistrarAuditoria({
           accion: 'Registro de nueva industria',
           modulo: 'Configuración Paramétrica',
-          detalles: `Incorporada industria ${nuevoNombreIndustria} (${nuevoCodigoIndustria})`
+          detalles: `Incorporada industria ${nuevoNombreIndustria}`
         });
       }
       setMostrarModalNuevaIndustria(false);
-      setNuevoCodigoIndustria('');
       setNuevoNombreIndustria('');
       mostrarAviso('Nueva industria incorporada al catálogo corporativo.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const guardarEdicionIndustria = async (e) => {
+    e.preventDefault();
+    try {
+      await editarIndustriaApi(industriaEdicion.idIndustria, { nombre: industriaEdicion.nombre });
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({
+          accion: 'Actualización de industria',
+          modulo: 'Configuración Paramétrica',
+          detalles: `Modificada industria a ${industriaEdicion.nombre}`
+        });
+      }
+      setIndustriaEdicion(null);
+      mostrarAviso('Industria actualizada.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const guardarEdicionDimension = async (e) => {
+    e.preventDefault();
+    try {
+      await editarDimensionApi(dimensionEdicion.idDimension, { nombre: dimensionEdicion.nombre });
+      await cargarDatos();
+      if (alRegistrarAuditoria) {
+        alRegistrarAuditoria({
+          accion: 'Actualización de dimensión',
+          modulo: 'Configuración Paramétrica',
+          detalles: `Modificada dimensión a ${dimensionEdicion.nombre}`
+        });
+      }
+      setDimensionEdicion(null);
+      mostrarAviso('Dimensión actualizada.');
     } catch (error) {
       setMensajeError(error.message);
     }
@@ -231,8 +270,8 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             <div key={u.idUnidad} className="superficie-tarjeta superficie-tarjeta-hover rounded-lg-token p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-8 h-8 rounded-sm-token bg-plataformaCorporativo text-white flex items-center justify-center font-bold text-xs">
-                    {u.codigo}
+                  <div className="w-8 h-8 rounded-sm-token bg-plataformaCorporativo text-white flex items-center justify-center">
+                    <Building2 className="w-4 h-4" />
                   </div>
                 </div>
                 <h4 className="text-titulo-tarjeta">{u.nombre}</h4>
@@ -257,15 +296,22 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             <table className="tabla-premium w-full text-left">
               <thead>
                 <tr>
-                  <th>Código</th>
                   <th>Sector / Industria</th>
+                  <th className="text-right">Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {industrias.map((ind) => (
                   <tr key={ind.idIndustria}>
-                    <td className="py-3.5 px-4 font-mono font-medium text-plataformaAzul">{ind.codigo}</td>
                     <td className="py-3.5 px-4 font-medium text-plataformaTexto">{ind.nombre}</td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => setIndustriaEdicion(ind)}
+                        className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -279,7 +325,16 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
           </p>
           {dimensiones.map((d) => (
             <div key={d.idDimension} className="flex items-center justify-between gap-4">
-              <span className="text-cuerpo-pequeno font-medium text-plataformaTexto w-48">{d.nombre} ({d.codigo})</span>
+              <div className="flex items-center gap-1.5 w-56">
+                <span className="text-cuerpo-pequeno font-medium text-plataformaTexto">{d.nombre}</span>
+                <button
+                  type="button"
+                  onClick={() => setDimensionEdicion(d)}
+                  className="p-1 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -357,10 +412,6 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             </div>
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-etiqueta text-plataformaSecundario block mb-1">Código</label>
-                <input type="text" required placeholder="ej. NPV" value={nuevoCodigoUnidad} onChange={(e) => setNuevoCodigoUnidad(e.target.value)} className="campo-entrada w-full font-mono" />
-              </div>
-              <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Nombre</label>
                 <input type="text" required value={nuevoNombreUnidad} onChange={(e) => setNuevoNombreUnidad(e.target.value)} className="campo-entrada w-full" />
               </div>
@@ -391,10 +442,6 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             </div>
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-etiqueta text-plataformaSecundario block mb-1">Código de Sector</label>
-                <input type="text" required placeholder="ej. ENE" value={nuevoCodigoIndustria} onChange={(e) => setNuevoCodigoIndustria(e.target.value)} className="campo-entrada w-full font-mono" />
-              </div>
-              <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Nombre de la Industria</label>
                 <input type="text" required placeholder="ej. Energía, Petróleo y Minería" value={nuevoNombreIndustria} onChange={(e) => setNuevoNombreIndustria(e.target.value)} className="campo-entrada w-full" />
               </div>
@@ -402,6 +449,70 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             <div className="flex justify-end gap-3">
               <button type="button" onClick={() => setMostrarModalNuevaIndustria(false)} className="boton-secundario">Cancelar</button>
               <button type="submit" className="boton-primario">Agregar industria</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {industriaEdicion && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <form onSubmit={guardarEdicionIndustria} className="contenido-modal max-w-md w-full p-8">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-plataformaAzul block uppercase">Configuración</span>
+                <h3 className="text-titulo-seccion mt-1">Editar Industria</h3>
+              </div>
+              <button type="button" onClick={() => setIndustriaEdicion(null)} className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Nombre de la Industria</label>
+                <input
+                  type="text"
+                  required
+                  value={industriaEdicion.nombre}
+                  onChange={(e) => setIndustriaEdicion({ ...industriaEdicion, nombre: e.target.value })}
+                  className="campo-entrada w-full"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setIndustriaEdicion(null)} className="boton-secundario">Cancelar</button>
+              <button type="submit" className="boton-primario">Guardar cambios</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {dimensionEdicion && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <form onSubmit={guardarEdicionDimension} className="contenido-modal max-w-md w-full p-8">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-plataformaAzul block uppercase">Configuración</span>
+                <h3 className="text-titulo-seccion mt-1">Editar Dimensión</h3>
+              </div>
+              <button type="button" onClick={() => setDimensionEdicion(null)} className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Nombre de la Dimensión</label>
+                <input
+                  type="text"
+                  required
+                  value={dimensionEdicion.nombre}
+                  onChange={(e) => setDimensionEdicion({ ...dimensionEdicion, nombre: e.target.value })}
+                  className="campo-entrada w-full"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setDimensionEdicion(null)} className="boton-secundario">Cancelar</button>
+              <button type="submit" className="boton-primario">Guardar cambios</button>
             </div>
           </form>
         </div>

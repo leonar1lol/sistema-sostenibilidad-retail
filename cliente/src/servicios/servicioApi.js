@@ -228,6 +228,11 @@ export async function actualizarPesosDimensionesApi(pesos) {
   return datos.dimensiones;
 }
 
+export async function editarDimensionApi(idDimension, datosDimension) {
+  const datos = await peticionAutenticada(`/configuracion/dimensiones/${idDimension}`, { method: 'PUT', body: JSON.stringify(datosDimension) });
+  return datos.dimension;
+}
+
 export async function listarItemsBancoApi() {
   const datos = await peticionAutenticada('/banco/items');
   return datos.items;

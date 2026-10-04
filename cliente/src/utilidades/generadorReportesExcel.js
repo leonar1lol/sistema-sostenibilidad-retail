@@ -154,18 +154,17 @@ export const exportarCertificadoIndividualExcel = (proveedor, evaluacion) => {
     lineas.push(escaparValorCsv('Vigencia Oficial') + delimitador + escaparValorCsv('12 meses a partir de la emisión'));
     lineas.push('');
     
-    const cabeceras = ['Código Dimensión', 'Nombre Dimensión', 'Peso Ponderado', 'Puntaje Obtenido', 'Estado de Aprobación'];
+    const cabeceras = ['Nombre Dimensión', 'Peso Ponderado', 'Puntaje Obtenido', 'Estado de Aprobación'];
     lineas.push(cabeceras.map(escaparValorCsv).join(delimitador));
-    
+
     const dimensiones = evaluacion?.dimensiones || [
-        { codigo: 'ECO', nombre: 'Dimensión Económica', peso: '35%', puntaje: evaluacion?.dimensiones?.ECO || '85', estado: 'Aprobado' },
-        { codigo: 'AMB', nombre: 'Dimensión Ambiental', peso: '25%', puntaje: evaluacion?.dimensiones?.AMB || '78', estado: 'Aprobado' },
-        { codigo: 'SOC', nombre: 'Dimensión Social', peso: '40%', puntaje: evaluacion?.dimensiones?.SOC || '82', estado: 'Aprobado' }
+        { nombre: 'Dimensión Económica', peso: '35%', puntaje: evaluacion?.dimensiones?.ECO || '85', estado: 'Aprobado' },
+        { nombre: 'Dimensión Ambiental', peso: '25%', puntaje: evaluacion?.dimensiones?.AMB || '78', estado: 'Aprobado' },
+        { nombre: 'Dimensión Social', peso: '40%', puntaje: evaluacion?.dimensiones?.SOC || '82', estado: 'Aprobado' }
     ];
 
     dimensiones.forEach(dim => {
         const fila = [
-            dim.codigo,
             dim.nombre,
             dim.peso || '20%',
             dim.puntaje,

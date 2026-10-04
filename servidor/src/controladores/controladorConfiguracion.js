@@ -1,6 +1,19 @@
 import { consultarBaseDatos } from '../configuracion/baseDatos.js';
 import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 
+// Los códigos cortos (ej. "SPSA", "FAR") son un detalle técnico interno para
+// relacionar tablas; el usuario ya no los ingresa ni los ve, se generan aquí.
+const generarCodigo = (nombre) => {
+  const prefijo = nombre
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 3);
+  const sufijo = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${prefijo}${sufijo}`.slice(0, 10);
+};
+
 export const listarUnidadesNegocio = async (peticion, respuesta) => {
   try {
     const resultado = await consultarBaseDatos(
@@ -13,21 +26,21 @@ export const listarUnidadesNegocio = async (peticion, respuesta) => {
 };
 
 export const crearUnidadNegocio = async (peticion, respuesta) => {
-  const { codigo, nombre, gerente } = peticion.body;
-  if (!codigo || !nombre) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Código y nombre son obligatorios.' });
+  const { nombre, gerente } = peticion.body;
+  if (!nombre) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'El nombre es obligatorio.' });
   }
   try {
     const resultado = await consultarBaseDatos(
       `INSERT INTO unidad_negocio (codigo, nombre, gerente) VALUES ($1, $2, $3)
        RETURNING id_unidad AS "idUnidad", codigo, nombre, gerente`,
-      [codigo, nombre, gerente || null]
+      [generarCodigo(nombre), nombre, gerente || null]
     );
     await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Creó la unidad de negocio ${nombre}` });
     return respuesta.status(201).json({ exito: true, unidad: resultado.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
-      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una unidad con ese código.' });
+      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una unidad con ese nombre.' });
     }
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al crear la unidad de negocio.' });
   }
@@ -65,21 +78,21 @@ export const listarIndustrias = async (peticion, respuesta) => {
 };
 
 export const crearIndustria = async (peticion, respuesta) => {
-  const { codigo, nombre } = peticion.body;
-  if (!codigo || !nombre) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Código y nombre son obligatorios.' });
+  const { nombre } = peticion.body;
+  if (!nombre) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'El nombre es obligatorio.' });
   }
   try {
     const resultado = await consultarBaseDatos(
       `INSERT INTO industria (codigo, nombre) VALUES ($1, $2)
        RETURNING id_industria AS "idIndustria", codigo, nombre`,
-      [codigo, nombre]
+      [generarCodigo(nombre), nombre]
     );
     await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Creó la industria ${nombre}` });
     return respuesta.status(201).json({ exito: true, industria: resultado.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
-      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una industria con ese código.' });
+      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una industria con ese nombre.' });
     }
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al crear la industria.' });
   }
@@ -112,6 +125,28 @@ export const listarDimensiones = async (peticion, respuesta) => {
     return respuesta.status(200).json({ exito: true, dimensiones: resultado.rows });
   } catch (error) {
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al consultar dimensiones.' });
+  }
+};
+
+export const editarDimension = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  const { nombre } = peticion.body;
+  if (!nombre || !nombre.trim()) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'El nombre es obligatorio.' });
+  }
+  try {
+    const resultado = await consultarBaseDatos(
+      `UPDATE dimension SET nombre = $1 WHERE id_dimension = $2
+       RETURNING id_dimension AS "idDimension", codigo, nombre, peso`,
+      [nombre.trim(), id]
+    );
+    if (!resultado.rows[0]) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Dimensión no encontrada.' });
+    }
+    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Editó la dimensión #${id}` });
+    return respuesta.status(200).json({ exito: true, dimension: resultado.rows[0] });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al editar la dimensión.' });
   }
 };
 

@@ -34,14 +34,18 @@ export const listarItems = async (peticion, respuesta) => {
 };
 
 export const crearItem = async (peticion, respuesta) => {
-  const { codigo, enunciado, peso, idDimension, alternativas, idsIndustrias } = peticion.body;
+  const { enunciado, peso, idDimension, alternativas, idsIndustrias } = peticion.body;
 
-  if (!codigo || !enunciado || !idDimension || !Array.isArray(alternativas) || alternativas.length < 2) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'Código, enunciado, dimensión y al menos dos alternativas son obligatorios.' });
+  if (!enunciado || !idDimension || !Array.isArray(alternativas) || alternativas.length < 2) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Enunciado, dimensión y al menos dos alternativas son obligatorios.' });
   }
 
   try {
     const idItem = await ejecutarTransaccion(async (cliente) => {
+      const dimensionFila = await cliente.query('SELECT codigo FROM dimension WHERE id_dimension = $1', [idDimension]);
+      const prefijo = dimensionFila.rows[0]?.codigo || 'ITEM';
+      const codigo = `${prefijo}-${Date.now().toString(36).toUpperCase()}`;
+
       const resultadoItem = await cliente.query(
         `INSERT INTO item (codigo, enunciado, peso, id_dimension) VALUES ($1, $2, $3, $4) RETURNING id_item`,
         [codigo, enunciado, peso || 1.0, idDimension]
@@ -66,12 +70,12 @@ export const crearItem = async (peticion, respuesta) => {
       return nuevoIdItem;
     });
 
-    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Creó el ítem ${codigo} en el banco de preguntas` });
+    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Creó el ítem "${enunciado.slice(0, 60)}" en el banco de preguntas` });
 
     return respuesta.status(201).json({ exito: true, idItem });
   } catch (error) {
     if (error.code === '23505') {
-      return respuesta.status(409).json({ exito: false, mensaje: 'Ya existe un ítem con ese código.' });
+      return respuesta.status(409).json({ exito: false, mensaje: 'Error al generar un código único para el ítem; intente nuevamente.' });
     }
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al crear el ítem.' });
   }
@@ -179,9 +183,9 @@ export const listarReglasCondicionales = async (peticion, respuesta) => {
   try {
     const resultado = await consultarBaseDatos(`
       SELECT rc.id_regla AS "idRegla", rc.accion,
-             rc.id_item_origen AS "idItemOrigen", io.codigo AS "codigoItemOrigen",
+             rc.id_item_origen AS "idItemOrigen", io.enunciado AS "enunciadoItemOrigen",
              rc.id_alternativa_disparadora AS "idAlternativaDisparadora", ad.texto AS "textoAlternativaDisparadora",
-             rc.id_item_destino AS "idItemDestino", id.codigo AS "codigoItemDestino"
+             rc.id_item_destino AS "idItemDestino", id.enunciado AS "enunciadoItemDestino"
       FROM regla_condicional rc
       JOIN item io ON io.id_item = rc.id_item_origen
       JOIN alternativa ad ON ad.id_alternativa = rc.id_alternativa_disparadora

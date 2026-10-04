@@ -32,6 +32,9 @@ const ETIQUETAS_ACCION = {
   deshabilitar: { texto: 'Deshabilitar ítem', clase: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icono: Slash }
 };
 
+const truncarTexto = (texto, limite = 60) =>
+  texto && texto.length > limite ? `${texto.slice(0, limite)}…` : texto;
+
 export default function BancoPreguntas() {
   const [vistaInterna, setVistaInterna] = useState('items');
   const [items, setItems] = useState([]);
@@ -47,7 +50,6 @@ export default function BancoPreguntas() {
   const [mensajeError, setMensajeError] = useState('');
   const [dimensionesColapsadas, setDimensionesColapsadas] = useState({});
 
-  const [nuevoCodigo, setNuevoCodigo] = useState('');
   const [nuevaIdDimension, setNuevaIdDimension] = useState('');
   const [nuevoEnunciado, setNuevoEnunciado] = useState('');
   const [nuevoPeso, setNuevoPeso] = useState('1');
@@ -100,7 +102,6 @@ export default function BancoPreguntas() {
     const coincideDimension = filtroDimension === 'todas' || item.codigoDimension === filtroDimension;
     const coincideTexto =
       busquedaItem.trim() === '' ||
-      item.codigo.toLowerCase().includes(busquedaItem.toLowerCase()) ||
       item.enunciado.toLowerCase().includes(busquedaItem.toLowerCase());
     return coincideDimension && coincideTexto;
   });
@@ -127,7 +128,6 @@ export default function BancoPreguntas() {
     e.preventDefault();
     try {
       await crearItemBancoApi({
-        codigo: nuevoCodigo,
         enunciado: nuevoEnunciado,
         peso: Number(nuevoPeso),
         idDimension: Number(nuevaIdDimension),
@@ -136,7 +136,6 @@ export default function BancoPreguntas() {
       });
       await cargarDatos();
       setMostrarModalNuevoItem(false);
-      setNuevoCodigo('');
       setNuevoEnunciado('');
       setNuevoPeso('1');
       setNuevasIdsIndustrias([]);
@@ -274,7 +273,7 @@ export default function BancoPreguntas() {
               <Search className="w-4 h-4 text-plataformaSecundario absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar por código de pregunta o texto de enunciado..."
+                placeholder="Buscar por texto de la pregunta..."
                 value={busquedaItem}
                 onChange={(e) => setBusquedaItem(e.target.value)}
                 className="campo-entrada campo-entrada-icono w-full"
@@ -358,9 +357,6 @@ export default function BancoPreguntas() {
                               <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                                 <div className="space-y-1.5 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md-token bg-plataformaAzul/10 text-plataformaAzul">
-                                      {item.codigo}
-                                    </span>
                                     {esDestinoDeRegla && (
                                       <span className="insignia-advertencia inline-flex items-center gap-1 text-[10px]">
                                         <GitBranch className="w-3 h-3" /> Condicionado por regla
@@ -464,7 +460,7 @@ export default function BancoPreguntas() {
                         Condición Detonante
                       </div>
                       <div className="text-xs text-plataformaTexto">
-                        Si <strong className="font-mono text-plataformaAzul">{r.codigoItemOrigen}</strong> responde:
+                        Si <strong className="text-plataformaAzul">{truncarTexto(r.enunciadoItemOrigen)}</strong> responde:
                       </div>
                       <div className="text-xs font-semibold text-plataformaTexto mt-1 bg-white p-1.5 rounded border border-black/[0.06] truncate">
                         "{r.textoAlternativaDisparadora}"
@@ -490,8 +486,8 @@ export default function BancoPreguntas() {
                           <IconoAccion className="w-3 h-3" />
                           {accionInfo.texto}
                         </span>
-                        <span className="font-mono font-bold text-xs text-plataformaTexto ml-1">
-                          {r.codigoItemDestino}
+                        <span className="font-semibold text-xs text-plataformaTexto ml-1">
+                          {truncarTexto(r.enunciadoItemDestino)}
                         </span>
                       </div>
                     </div>
@@ -535,32 +531,6 @@ export default function BancoPreguntas() {
             </div>
 
             <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Código Único *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: ECO-18"
-                    value={nuevoCodigo}
-                    onChange={(e) => setNuevoCodigo(e.target.value.toUpperCase())}
-                    className="campo-entrada w-full font-mono text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Dimensión ESG *</label>
-                  <select
-                    value={nuevaIdDimension}
-                    onChange={(e) => setNuevaIdDimension(e.target.value)}
-                    className="campo-select w-full"
-                  >
-                    {dimensiones.map((d) => (
-                      <option key={d.idDimension} value={d.idDimension}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div>
                 <label className="text-etiqueta text-plataformaSecundario block mb-1">Enunciado de la Pregunta *</label>
                 <textarea
@@ -573,16 +543,30 @@ export default function BancoPreguntas() {
                 />
               </div>
 
-              <div>
-                <label className="text-etiqueta text-plataformaSecundario block mb-1">Ponderador de Importancia</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={nuevoPeso}
-                  onChange={(e) => setNuevoPeso(e.target.value)}
-                  className="campo-entrada w-full font-mono text-xs"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Dimensión ESG *</label>
+                  <select
+                    value={nuevaIdDimension}
+                    onChange={(e) => setNuevaIdDimension(e.target.value)}
+                    className="campo-select w-full"
+                  >
+                    {dimensiones.map((d) => (
+                      <option key={d.idDimension} value={d.idDimension}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-etiqueta text-plataformaSecundario block mb-1">Ponderador de Importancia</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={nuevoPeso}
+                    onChange={(e) => setNuevoPeso(e.target.value)}
+                    className="campo-entrada w-full font-mono text-xs"
+                  />
+                </div>
               </div>
 
               <div>
@@ -702,7 +686,7 @@ export default function BancoPreguntas() {
                   <option value="">Seleccione una pregunta detonante…</option>
                   {items.map((i) => (
                     <option key={i.idItem} value={i.idItem}>
-                      {i.codigo} — {i.enunciado.slice(0, 45)}…
+                      {truncarTexto(i.enunciado, 70)}
                     </option>
                   ))}
                 </select>
@@ -755,7 +739,7 @@ export default function BancoPreguntas() {
                     .filter((i) => i.idItem !== Number(reglaIdItemOrigen))
                     .map((i) => (
                       <option key={i.idItem} value={i.idItem}>
-                        {i.codigo} — {i.enunciado.slice(0, 45)}…
+                        {truncarTexto(i.enunciado, 70)}
                       </option>
                     ))}
                 </select>

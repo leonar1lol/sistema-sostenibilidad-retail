@@ -4,7 +4,6 @@ import {
   TrendingUp,
   Leaf,
   Users,
-  Shield,
   Briefcase,
   FileDown,
   RotateCcw,
@@ -16,11 +15,9 @@ import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 import VisorReportePdf from '../../componentes/VisorReportePdf.jsx';
 
 const ICONOS_POR_CODIGO_DIMENSION = {
+  ECO: { icono: Briefcase, color: 'text-indigo-600', barra: 'bg-indigo-500' },
   AMB: { icono: Leaf, color: 'text-emerald-600', barra: 'bg-emerald-500' },
-  SOC: { icono: Users, color: 'text-blue-600', barra: 'bg-blue-500' },
-  ETI: { icono: Shield, color: 'text-indigo-600', barra: 'bg-indigo-500' },
-  LAB: { icono: Briefcase, color: 'text-amber-600', barra: 'bg-amber-500' },
-  CAD: { icono: TrendingUp, color: 'text-purple-600', barra: 'bg-purple-500' }
+  SOC: { icono: Users, color: 'text-blue-600', barra: 'bg-blue-500' }
 };
 
 const CLASE_POR_NIVEL = {

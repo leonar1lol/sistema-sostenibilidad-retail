@@ -327,9 +327,9 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
             className="campo-select min-w-[160px]"
           >
             <option value="Todas">Todas las Dimensiones</option>
-            <option value="ECO">Económico (ECO)</option>
-            <option value="AMB">Ambiental (AMB)</option>
-            <option value="SOC">Social (SOC)</option>
+            <option value="ECO">Económico</option>
+            <option value="AMB">Ambiental</option>
+            <option value="SOC">Social</option>
           </select>
 
           <select
