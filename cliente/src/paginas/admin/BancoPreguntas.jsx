@@ -23,7 +23,8 @@ import {
   listarIndustriasApi,
   listarReglasCondicionalesApi,
   crearReglaCondicionalApi,
-  eliminarReglaCondicionalApi
+  eliminarReglaCondicionalApi,
+  tienePermiso
 } from '../../servicios/servicioApi.js';
 
 const ETIQUETAS_ACCION = {
@@ -36,6 +37,7 @@ const truncarTexto = (texto, limite = 60) =>
   texto && texto.length > limite ? `${texto.slice(0, limite)}…` : texto;
 
 export default function BancoPreguntas() {
+  const puedeConfigurar = tienePermiso('configurar_banco_items');
   const [vistaInterna, setVistaInterna] = useState('items');
   const [items, setItems] = useState([]);
   const [dimensiones, setDimensiones] = useState([]);
@@ -243,7 +245,7 @@ export default function BancoPreguntas() {
           </button>
         </nav>
 
-        {vistaInterna === 'items' ? (
+        {puedeConfigurar && (vistaInterna === 'items' ? (
           <button
             onClick={() => setMostrarModalNuevoItem(true)}
             className="boton-primario flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
@@ -259,7 +261,7 @@ export default function BancoPreguntas() {
             <Plus className="w-4 h-4" />
             <span>Nueva regla lógica</span>
           </button>
-        )}
+        ))}
       </div>
 
       {cargando ? (
@@ -493,13 +495,15 @@ export default function BancoPreguntas() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => borrarRegla(r.idRegla)}
-                    title="Eliminar regla condicional"
-                    className="p-2 rounded-full hover:bg-rose-50 text-plataformaSecundario hover:text-rose-600 transition-colors cursor-pointer self-end md:self-center shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {puedeConfigurar && (
+                    <button
+                      onClick={() => borrarRegla(r.idRegla)}
+                      title="Eliminar regla condicional"
+                      className="p-2 rounded-full hover:bg-rose-50 text-plataformaSecundario hover:text-rose-600 transition-colors cursor-pointer self-end md:self-center shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}

@@ -23,7 +23,8 @@ import {
   asignarEvaluacionApi,
   enviarRecordatorioApi,
   listarUnidadesApi,
-  listarProveedoresAdminApi
+  listarProveedoresAdminApi,
+  tienePermiso
 } from '../../servicios/servicioApi.js';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 
@@ -34,6 +35,8 @@ const INSIGNIA_ESTADO = {
 };
 
 export default function GestionCampanias({ alRegistrarAuditoria }) {
+  const puedeCrearCampanias = tienePermiso('crear_publicar_campanias');
+  const puedeAsignarEvaluaciones = tienePermiso('asignar_evaluaciones');
   const [campanias, setCampanias] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -208,13 +211,15 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             Planificación de periodos, emisión de enlaces corporativos por unidad y monitoreo de avances.
           </p>
         </div>
-        <button
-          onClick={() => setMostrarModalNueva(true)}
-          className="boton-primario flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nueva campaña</span>
-        </button>
+        {puedeCrearCampanias && (
+          <button
+            onClick={() => setMostrarModalNueva(true)}
+            className="boton-primario flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nueva campaña</span>
+          </button>
+        )}
       </div>
 
       {cargando ? (
@@ -316,7 +321,8 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-plataformaSecundario font-medium mr-1">Cambiar estado:</span>
-              {['Borrador', 'Publicada', 'Cerrada'].map((estado) => (
+              {!puedeCrearCampanias && <span className="text-xs text-black/30">(sin permiso para modificar)</span>}
+              {puedeCrearCampanias && ['Borrador', 'Publicada', 'Cerrada'].map((estado) => (
                 <button
                   key={estado}
                   onClick={() => cambiarEstado(campaniaSeleccionada, estado)}
@@ -375,31 +381,33 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             </div>
           </div>
 
-          <div className="p-4 rounded-lg-token bg-black/[0.015] border border-black/[0.05]">
-            <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">
-              Asignar evaluación directa a un proveedor del padrón
-            </h4>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <select
-                value={idProveedorAsignar}
-                onChange={(e) => setIdProveedorAsignar(e.target.value)}
-                className="campo-select flex-1 w-full"
-              >
-                {proveedores.map((p) => (
-                  <option key={p.idProveedor} value={p.idProveedor}>
-                    {p.razonSocial} — RUC: {p.ruc} ({p.unidad})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={asignarEvaluacion}
-                className="boton-primario shrink-0 w-full sm:w-auto cursor-pointer"
-              >
-                Asignar y copiar enlace
-              </button>
+          {puedeAsignarEvaluaciones && (
+            <div className="p-4 rounded-lg-token bg-black/[0.015] border border-black/[0.05]">
+              <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">
+                Asignar evaluación directa a un proveedor del padrón
+              </h4>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <select
+                  value={idProveedorAsignar}
+                  onChange={(e) => setIdProveedorAsignar(e.target.value)}
+                  className="campo-select flex-1 w-full"
+                >
+                  {proveedores.map((p) => (
+                    <option key={p.idProveedor} value={p.idProveedor}>
+                      {p.razonSocial} — RUC: {p.ruc} ({p.unidad})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={asignarEvaluacion}
+                  className="boton-primario shrink-0 w-full sm:w-auto cursor-pointer"
+                >
+                  Asignar y copiar enlace
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -449,7 +457,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
                         {ev.fechaEnvio ? new Date(ev.fechaEnvio).toLocaleString('es-PE') : 'Sin recordatorio'}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        {ev.estado !== 'Finalizado' && (
+                        {ev.estado !== 'Finalizado' && puedeAsignarEvaluaciones && (
                           <button
                             type="button"
                             onClick={() => enviarRecordatorio(ev)}

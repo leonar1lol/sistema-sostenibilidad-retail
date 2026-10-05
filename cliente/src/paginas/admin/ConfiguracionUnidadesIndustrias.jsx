@@ -16,10 +16,12 @@ import {
   editarIndustriaApi,
   listarDimensionesApi,
   editarDimensionApi,
-  actualizarPesosDimensionesApi
+  actualizarPesosDimensionesApi,
+  tienePermiso
 } from '../../servicios/servicioApi.js';
 
 export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }) {
+  const puedeConfigurar = tienePermiso('configurar_banco_items');
   const [subPestana, setSubPestana] = useState('unidades');
   const [unidades, setUnidades] = useState([]);
   const [industrias, setIndustrias] = useState([]);
@@ -246,13 +248,13 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
           </button>
         </nav>
 
-        {subPestana === 'unidades' && (
+        {subPestana === 'unidades' && puedeConfigurar && (
           <button onClick={() => setMostrarModalNuevaUnidad(true)} className="boton-primario h-9 px-4 text-xs flex items-center gap-1.5">
             <Plus className="w-3.5 h-3.5" />
             <span>Nueva unidad</span>
           </button>
         )}
-        {subPestana === 'industrias' && (
+        {subPestana === 'industrias' && puedeConfigurar && (
           <button onClick={() => setMostrarModalNuevaIndustria(true)} className="boton-primario h-9 px-4 text-xs flex items-center gap-1.5">
             <Plus className="w-3.5 h-3.5" />
             <span>Nueva industria</span>
@@ -279,14 +281,16 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
                   Gerente responsable: <span className="font-medium text-plataformaTexto">{u.gerente || 'Sin asignar'}</span>
                 </p>
               </div>
-              <div className="pt-4 mt-4 border-t border-black/[0.04] flex items-center justify-end">
-                <button
-                  onClick={() => setUnidadEdicion(u)}
-                  className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
+              {puedeConfigurar && (
+                <div className="pt-4 mt-4 border-t border-black/[0.04] flex items-center justify-end">
+                  <button
+                    onClick={() => setUnidadEdicion(u)}
+                    className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -305,12 +309,14 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
                   <tr key={ind.idIndustria}>
                     <td className="py-3.5 px-4 font-medium text-plataformaTexto">{ind.nombre}</td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setIndustriaEdicion(ind)}
-                        className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      {puedeConfigurar && (
+                        <button
+                          onClick={() => setIndustriaEdicion(ind)}
+                          className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -327,33 +333,38 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
             <div key={d.idDimension} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5 w-56">
                 <span className="text-cuerpo-pequeno font-medium text-plataformaTexto">{d.nombre}</span>
-                <button
-                  type="button"
-                  onClick={() => setDimensionEdicion(d)}
-                  className="p-1 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+                {puedeConfigurar && (
+                  <button
+                    type="button"
+                    onClick={() => setDimensionEdicion(d)}
+                    className="p-1 rounded-full hover:bg-black/[0.04] text-plataformaSecundario hover:text-plataformaTexto transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={0}
                   max={100}
+                  disabled={!puedeConfigurar}
                   value={pesosEdicion[d.idDimension] ?? 0}
                   onChange={(e) => setPesosEdicion({ ...pesosEdicion, [d.idDimension]: e.target.value })}
-                  className="campo-entrada w-24 font-mono text-right"
+                  className="campo-entrada w-24 font-mono text-right disabled:opacity-60"
                 />
                 <span className="text-cuerpo-pequeno text-plataformaSecundario">%</span>
               </div>
             </div>
           ))}
-          <div className={`flex items-center justify-between pt-4 border-t border-black/[0.06] ${sumaPesosEdicion !== 100 ? 'text-red-600' : 'text-emerald-600'}`}>
-            <span className="text-cuerpo-pequeno font-semibold">Suma total: {sumaPesosEdicion}%</span>
-            <button type="submit" disabled={sumaPesosEdicion !== 100} className="boton-primario disabled:opacity-40 disabled:cursor-not-allowed">
-              Guardar pesos
-            </button>
-          </div>
+          {puedeConfigurar && (
+            <div className={`flex items-center justify-between pt-4 border-t border-black/[0.06] ${sumaPesosEdicion !== 100 ? 'text-red-600' : 'text-emerald-600'}`}>
+              <span className="text-cuerpo-pequeno font-semibold">Suma total: {sumaPesosEdicion}%</span>
+              <button type="submit" disabled={sumaPesosEdicion !== 100} className="boton-primario disabled:opacity-40 disabled:cursor-not-allowed">
+                Guardar pesos
+              </button>
+            </div>
+          )}
         </form>
       )}
 

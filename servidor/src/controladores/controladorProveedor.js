@@ -177,6 +177,37 @@ export const actualizarUnidadesProveedor = async (peticion, respuesta) => {
   }
 };
 
+export const editarRazonSocial = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  const { razonSocial } = peticion.body;
+
+  if (!razonSocial || !razonSocial.trim()) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'La razón social es obligatoria.' });
+  }
+
+  try {
+    const esCorporativo = !peticion.usuario.idUnidad;
+    const resultado = await consultarBaseDatos(
+      `UPDATE proveedor SET razon_social = $1
+       WHERE id_proveedor = $2 AND ($3::boolean OR id_unidad = $4)
+       RETURNING id_proveedor AS "idProveedor", razon_social AS "razonSocial"`,
+      [razonSocial.trim(), id, esCorporativo, peticion.usuario.idUnidad]
+    );
+    if (!resultado.rows[0]) {
+      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado o fuera de su unidad de negocio.' });
+    }
+
+    await registrarAuditoria({
+      idUsuario: peticion.usuario.idUsuario,
+      accion: `Actualizó la razón social del proveedor #${id} a "${resultado.rows[0].razonSocial}"`
+    });
+
+    return respuesta.status(200).json({ exito: true, proveedor: resultado.rows[0] });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al actualizar la razón social.' });
+  }
+};
+
 export const obtenerDatosMaestros = async (peticion, respuesta) => {
   try {
     const resIndustrias = await consultarBaseDatos('SELECT id_industria, codigo, nombre FROM industria ORDER BY id_industria ASC;');

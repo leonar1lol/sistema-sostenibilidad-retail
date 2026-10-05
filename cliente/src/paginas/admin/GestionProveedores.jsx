@@ -18,16 +18,19 @@ import {
   Phone,
   Mail,
   UserCheck,
-  FileText
+  FileText,
+  Edit2
 } from 'lucide-react';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
 import {
   listarProveedoresAdminApi,
   crearProveedorAdminApi,
   actualizarUnidadesProveedorApi,
+  editarRazonSocialProveedorApi,
   listarUnidadesApi,
   listarIndustriasApi,
-  listarEvidenciaProveedorAdminApi
+  listarEvidenciaProveedorAdminApi,
+  tienePermiso
 } from '../../servicios/servicioApi.js';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
 
@@ -87,6 +90,11 @@ export default function GestionProveedores({
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
   const [mensajeNotificacion, setMensajeNotificacion] = useState('');
   const [mensajeError, setMensajeError] = useState('');
+  const [razonSocialEdicion, setRazonSocialEdicion] = useState(null);
+
+  const puedeMarcarCritico = tienePermiso('marcar_critico');
+  const puedeExportar = tienePermiso('exportar_reportes');
+  const puedeEditarRazonSocial = tienePermiso('actualizar_razon_social');
 
   const [nuevoRuc, setNuevoRuc] = useState('');
   const [nuevaRazon, setNuevaRazon] = useState('');
@@ -224,6 +232,27 @@ export default function GestionProveedores({
     }
   };
 
+  const guardarRazonSocial = async (e) => {
+    e.preventDefault();
+    if (!razonSocialEdicion.valor.trim()) {
+      setMensajeError('La razón social no puede estar vacía.');
+      return;
+    }
+    try {
+      await editarRazonSocialProveedorApi(razonSocialEdicion.idProveedor, razonSocialEdicion.valor.trim());
+      await cargarDatos();
+      setRazonSocialEdicion(null);
+      setProveedorSeleccionado((prev) =>
+        prev && prev.idProveedor === razonSocialEdicion.idProveedor
+          ? { ...prev, razonSocial: razonSocialEdicion.valor.trim() }
+          : prev
+      );
+      mostrarAviso('Razón social actualizada.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
   const alternarSeleccionNuevaUnidad = (idUnidad) => {
     setNuevasIdsUnidad((prev) => {
       if (prev.includes(idUnidad)) {
@@ -314,20 +343,24 @@ export default function GestionProveedores({
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => exportarProveedoresAExcel(proveedoresFiltrados)}
-            className="boton-secundario flex items-center gap-1.5 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Exportar lista ({proveedoresFiltrados.length})</span>
-          </button>
-          <button
-            onClick={() => setMostrarModalNuevo(true)}
-            className="boton-primario flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Incorporar proveedor</span>
-          </button>
+          {puedeExportar && (
+            <button
+              onClick={() => exportarProveedoresAExcel(proveedoresFiltrados)}
+              className="boton-secundario flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Exportar lista ({proveedoresFiltrados.length})</span>
+            </button>
+          )}
+          {puedeMarcarCritico && (
+            <button
+              onClick={() => setMostrarModalNuevo(true)}
+              className="boton-primario flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Incorporar proveedor</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -644,42 +677,45 @@ export default function GestionProveedores({
                           key={u.idUnidad}
                           className="flex items-center justify-between gap-3 p-2.5 rounded-md-token bg-black/[0.015] border border-black/[0.04]"
                         >
-                          <label className="flex items-center gap-2 text-cuerpo-pequeno text-plataformaTexto cursor-pointer flex-1">
+                          <label className={`flex items-center gap-2 text-cuerpo-pequeno text-plataformaTexto flex-1 ${puedeMarcarCritico ? 'cursor-pointer' : ''}`}>
                             <input
                               type="checkbox"
                               checked={u.asignada}
+                              disabled={!puedeMarcarCritico}
                               onChange={() => alternarAsignacionUnidad(u.idUnidad)}
-                              className="cursor-pointer"
+                              className={puedeMarcarCritico ? 'cursor-pointer' : ''}
                             />
                             <span className="font-medium">{u.nombre}</span>
                           </label>
                           <label
-                            className={`flex items-center gap-1.5 text-xs cursor-pointer ${
-                              u.asignada ? 'text-amber-700' : 'text-black/25 cursor-not-allowed'
+                            className={`flex items-center gap-1.5 text-xs ${
+                              u.asignada && puedeMarcarCritico ? 'text-amber-700 cursor-pointer' : 'text-black/25 cursor-not-allowed'
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={u.critica}
-                              disabled={!u.asignada}
+                              disabled={!u.asignada || !puedeMarcarCritico}
                               onChange={() => alternarCriticidadUnidad(u.idUnidad)}
-                              className="cursor-pointer disabled:cursor-not-allowed"
+                              className="disabled:cursor-not-allowed"
                             />
                             <ShieldAlert className="w-3.5 h-3.5" />
                             <span>Crítico</span>
                           </label>
                         </div>
                       ))}
-                      <div className="flex justify-end pt-1">
-                        <button
-                          type="button"
-                          onClick={guardarUnidadesProveedor}
-                          disabled={guardandoUnidades}
-                          className="boton-primario text-xs cursor-pointer"
-                        >
-                          {guardandoUnidades ? 'Guardando...' : 'Guardar unidades y criticidad'}
-                        </button>
-                      </div>
+                      {puedeMarcarCritico && (
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={guardarUnidadesProveedor}
+                            disabled={guardandoUnidades}
+                            className="boton-primario text-xs cursor-pointer"
+                          >
+                            {guardandoUnidades ? 'Guardando...' : 'Guardar unidades y criticidad'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -721,7 +757,20 @@ export default function GestionProveedores({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-cuerpo-pequeno">
                   <div className="p-3 rounded-md-token bg-black/[0.015] border border-black/[0.04]">
-                    <span className="text-[11px] text-plataformaSecundario block mb-0.5 font-medium">Razón Social</span>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[11px] text-plataformaSecundario font-medium">Razón Social</span>
+                      {puedeEditarRazonSocial && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRazonSocialEdicion({ idProveedor: proveedorSeleccionado.idProveedor, valor: proveedorSeleccionado.razonSocial })
+                          }
+                          className="p-0.5 rounded-full hover:bg-black/[0.06] text-plataformaSecundario hover:text-plataformaTexto cursor-pointer transition-colors"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                     <span className="font-semibold text-plataformaTexto">{proveedorSeleccionado.razonSocial}</span>
                   </div>
 
@@ -997,6 +1046,46 @@ export default function GestionProveedores({
                 className="boton-primario cursor-pointer"
               >
                 Guardar en padrón
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {razonSocialEdicion && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <form onSubmit={guardarRazonSocial} className="contenido-modal max-w-md w-full p-8">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-plataformaAzul block uppercase">Padrón Corporativo</span>
+                <h3 className="text-titulo-seccion mt-1">Editar Razón Social</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRazonSocialEdicion(null)}
+                className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-etiqueta text-plataformaSecundario block mb-1">Razón Social</label>
+                <input
+                  type="text"
+                  required
+                  value={razonSocialEdicion.valor}
+                  onChange={(e) => setRazonSocialEdicion({ ...razonSocialEdicion, valor: e.target.value })}
+                  className="campo-entrada w-full"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setRazonSocialEdicion(null)} className="boton-secundario cursor-pointer">
+                Cancelar
+              </button>
+              <button type="submit" className="boton-primario cursor-pointer">
+                Guardar cambios
               </button>
             </div>
           </form>

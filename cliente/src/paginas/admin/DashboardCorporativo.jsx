@@ -26,7 +26,7 @@ import ConfiguracionUnidadesIndustrias from './ConfiguracionUnidadesIndustrias.j
 import BitacoraAuditoria from './BitacoraAuditoria.jsx';
 import CentroReportes from './CentroReportes.jsx';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
-import { listarProveedoresAdminApi, listarUnidadesApi } from '../../servicios/servicioApi.js';
+import { listarProveedoresAdminApi, listarUnidadesApi, tienePermiso } from '../../servicios/servicioApi.js';
 
 export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCambiarPestana }) {
   const [pestanaActiva, setPestanaActiva] = useState(pestanaInicial);
@@ -38,6 +38,10 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
   const [filtroDirectorioUnidad, setFiltroDirectorioUnidad] = useState('todas');
   const [filtroDirectorioCriticos, setFiltroDirectorioCriticos] = useState(false);
   const [filtroDirectorioEstado, setFiltroDirectorioEstado] = useState('todos');
+
+  const puedeAdministrarUsuarios = tienePermiso('administrar_usuarios_roles');
+  const puedeExportarReportes = tienePermiso('exportar_reportes');
+  const puedeVerAuditoria = tienePermiso('ver_dashboard_corporativo');
 
   useEffect(() => {
     if (pestanaInicial) {
@@ -226,21 +230,23 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
             </span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => seleccionarPestana('usuarios')}
-            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-              pestanaActiva === 'usuarios'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
-                : 'text-plataformaSecundario hover:text-plataformaTexto'
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            <span>Usuarios y Roles</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
-              RF02/03
-            </span>
-          </button>
+          {puedeAdministrarUsuarios && (
+            <button
+              type="button"
+              onClick={() => seleccionarPestana('usuarios')}
+              className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                pestanaActiva === 'usuarios'
+                  ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
+                  : 'text-plataformaSecundario hover:text-plataformaTexto'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>Usuarios y Roles</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                RF02/03
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -258,37 +264,41 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
             </span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => seleccionarPestana('auditoria')}
-            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-              pestanaActiva === 'auditoria'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
-                : 'text-plataformaSecundario hover:text-plataformaTexto'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>Auditoría</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-              RF16/24
-            </span>
-          </button>
+          {puedeVerAuditoria && (
+            <button
+              type="button"
+              onClick={() => seleccionarPestana('auditoria')}
+              className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                pestanaActiva === 'auditoria'
+                  ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
+                  : 'text-plataformaSecundario hover:text-plataformaTexto'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              <span>Auditoría</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                RF16/24
+              </span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => seleccionarPestana('reportes')}
-            className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-              pestanaActiva === 'reportes'
-                ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
-                : 'text-plataformaSecundario hover:text-plataformaTexto'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Reportes y Auditoría</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-              RF13 / 6 Informes
-            </span>
-          </button>
+          {puedeExportarReportes && (
+            <button
+              type="button"
+              onClick={() => seleccionarPestana('reportes')}
+              className={`px-3.5 py-2.5 text-cuerpo-pequeno font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                pestanaActiva === 'reportes'
+                  ? 'border-b-2 border-plataformaAzul text-plataformaTexto font-semibold'
+                  : 'text-plataformaSecundario hover:text-plataformaTexto'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Reportes y Auditoría</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                RF13 / 6 Informes
+              </span>
+            </button>
+          )}
         </nav>
       </div>
 
@@ -324,23 +334,27 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
               <span>{soloCriticosActivo ? 'Solo Críticos Activado' : 'Ver solo críticos'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={descargarReporteExcel}
-              className="boton-secundario flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Descargar Excel</span>
-            </button>
+            {puedeExportarReportes && (
+              <button
+                type="button"
+                onClick={descargarReporteExcel}
+                className="boton-secundario flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Descargar Excel</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => seleccionarPestana('reportes')}
-              className="boton-secundario flex items-center gap-1.5 cursor-pointer border-plataformaAzul/40 text-plataformaAzul hover:bg-plataformaAzul/[0.05]"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Centro de Reportes (6)</span>
-            </button>
+            {puedeExportarReportes && (
+              <button
+                type="button"
+                onClick={() => seleccionarPestana('reportes')}
+                className="boton-secundario flex items-center gap-1.5 cursor-pointer border-plataformaAzul/40 text-plataformaAzul hover:bg-plataformaAzul/[0.05]"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Centro de Reportes (6)</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -506,13 +520,13 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
 
       {pestanaActiva === 'campanias' && <GestionCampanias />}
 
-      {pestanaActiva === 'usuarios' && <GestionUsuariosRoles />}
+      {pestanaActiva === 'usuarios' && puedeAdministrarUsuarios && <GestionUsuariosRoles />}
 
       {pestanaActiva === 'configuracion' && <ConfiguracionUnidadesIndustrias />}
 
-      {pestanaActiva === 'auditoria' && <BitacoraAuditoria />}
+      {pestanaActiva === 'auditoria' && puedeVerAuditoria && <BitacoraAuditoria />}
 
-      {pestanaActiva === 'reportes' && (
+      {pestanaActiva === 'reportes' && puedeExportarReportes && (
         <CentroReportes
           proveedores={proveedores}
           unidades={unidades}

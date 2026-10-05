@@ -17,15 +17,13 @@ export const verificarSesion = (peticion, respuesta, siguiente) => {
 };
 
 export const requierePermiso = (codigoPermiso) => (peticion, respuesta, siguiente) => {
-  const rol = peticion.usuario?.rol || '';
+  // La única fuente de verdad es la lista de permisos emitida en el token
+  // (reflejo exacto de la Matriz de Permisos). No se hacen excepciones por
+  // nombre de rol: el Administrador Corporativo tiene acceso total porque
+  // iniciarSesion le agrega el comodín '*', no por comparar texto.
   const permisos = peticion.usuario?.permisos || [];
 
-  if (
-    rol === 'Administrador Corporativo' ||
-    rol.toLowerCase().includes('admin') ||
-    permisos.includes('*') ||
-    permisos.includes(codigoPermiso)
-  ) {
+  if (permisos.includes('*') || permisos.includes(codigoPermiso)) {
     return siguiente();
   }
   return respuesta.status(403).json({ exito: false, mensaje: 'No tiene permiso para esta operación.' });

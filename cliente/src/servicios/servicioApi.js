@@ -1,8 +1,8 @@
 const URL_BASE_API = import.meta.env.VITE_API_BASE_URL || 'https://plataforma-sostenibilidad-api-42337725028.us-east1.run.app/api';
 
 async function peticionAutenticada(ruta, opciones = {}) {
-  let token = localStorage.getItem('tokenSesionCorporativa');
-  let respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
+  const token = localStorage.getItem('tokenSesionCorporativa');
+  const respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
     ...opciones,
     headers: {
       'Content-Type': 'application/json',
@@ -12,27 +12,10 @@ async function peticionAutenticada(ruta, opciones = {}) {
   });
 
   if (respuesta.status === 401) {
-    try {
-      const intentoRenovacion = await fetch(`${URL_BASE_API}/autenticacion/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ correo: 'admin@intercorpretail.pe', clave: 'Admin2026' })
-      });
-      const datosRenovados = await intentoRenovacion.json();
-      if (datosRenovados.exito && datosRenovados.token) {
-        localStorage.setItem('tokenSesionCorporativa', datosRenovados.token);
-        localStorage.setItem('sesionCorporativa', JSON.stringify({ ...datosRenovados.usuario, token: datosRenovados.token }));
-        token = datosRenovados.token;
-        respuesta = await fetch(`${URL_BASE_API}${ruta}`, {
-          ...opciones,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            ...opciones.headers
-          }
-        });
-      }
-    } catch {}
+    localStorage.removeItem('tokenSesionCorporativa');
+    localStorage.removeItem('sesionCorporativa');
+    window.location.reload();
+    throw new Error('Su sesión expiró. Vuelva a iniciar sesión.');
   }
 
   const datos = await respuesta.json();
@@ -149,6 +132,16 @@ export async function iniciarSesionApi(correo, clave) {
     throw new Error(datos.mensaje || 'No se pudo iniciar sesión.');
   }
   return datos;
+}
+
+export function tienePermiso(codigoPermiso) {
+  try {
+    const sesion = JSON.parse(localStorage.getItem('sesionCorporativa') || 'null');
+    const permisos = sesion?.permisos || [];
+    return permisos.includes('*') || permisos.includes(codigoPermiso);
+  } catch {
+    return false;
+  }
 }
 
 export async function listarUsuariosApi() {
@@ -314,6 +307,14 @@ export async function actualizarUnidadesProveedorApi(idProveedor, { idsUnidad, i
     method: 'PUT',
     body: JSON.stringify({ idsUnidad, idsUnidadesCriticas })
   });
+}
+
+export async function editarRazonSocialProveedorApi(idProveedor, razonSocial) {
+  const datos = await peticionAutenticada(`/proveedores/${idProveedor}/razon-social`, {
+    method: 'PUT',
+    body: JSON.stringify({ razonSocial })
+  });
+  return datos.proveedor;
 }
 
 export async function listarAuditoriaApi() {
