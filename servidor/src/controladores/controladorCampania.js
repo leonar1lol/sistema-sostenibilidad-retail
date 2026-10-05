@@ -1,5 +1,4 @@
-import crypto from 'crypto';
-import { consultarBaseDatos } from '../configuracion/baseDatos.js';
+import { consultarBaseDatos, ejecutarTransaccion } from '../configuracion/baseDatos.js';
 import { registrarAuditoria } from '../servicios/servicioAuditoria.js';
 import { enviarRecordatorioEvaluacion } from '../servicios/servicioCorreo.js';
 
@@ -103,15 +102,24 @@ export const cambiarEstadoCampania = async (peticion, respuesta) => {
 
   try {
     await inicializarTablasCampania();
-    const resultado = await consultarBaseDatos(
-      `UPDATE campania SET estado = $1 WHERE id_campania = $2 RETURNING id_campania AS "idCampania", nombre, estado`,
-      [estado, id]
-    );
-    if (!resultado.rows[0]) {
+    const campaniaActualizada = await ejecutarTransaccion(async (cliente) => {
+      if (estado === 'Publicada') {
+        await cliente.query(
+          `UPDATE campania SET estado = 'Cerrada' WHERE estado = 'Publicada' AND id_campania != $1`,
+          [id]
+        );
+      }
+      const resultado = await cliente.query(
+        `UPDATE campania SET estado = $1 WHERE id_campania = $2 RETURNING id_campania AS "idCampania", nombre, estado`,
+        [estado, id]
+      );
+      return resultado.rows[0];
+    });
+    if (!campaniaActualizada) {
       return respuesta.status(404).json({ exito: false, mensaje: 'Campaña no encontrada.' });
     }
     await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Cambió la campaña #${id} a estado ${estado}` });
-    return respuesta.status(200).json({ exito: true, campania: resultado.rows[0] });
+    return respuesta.status(200).json({ exito: true, campania: campaniaActualizada });
   } catch (error) {
     console.error('Error al cambiar estado campania:', error);
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al cambiar el estado de la campaña.' });
@@ -138,53 +146,6 @@ export const listarEvaluacionesDeCampania = async (peticion, respuesta) => {
   } catch (error) {
     console.error('Error al listar evaluaciones de campania:', error);
     return respuesta.status(500).json({ exito: false, mensaje: 'Error al consultar las evaluaciones de la campaña.' });
-  }
-};
-
-export const asignarEvaluacion = async (peticion, respuesta) => {
-  const { id } = peticion.params;
-  const { idProveedor } = peticion.body;
-
-  if (!idProveedor) {
-    return respuesta.status(400).json({ exito: false, mensaje: 'idProveedor es obligatorio.' });
-  }
-
-  try {
-    await inicializarTablasCampania();
-    const proveedor = await consultarBaseDatos(
-      'SELECT id_proveedor, razon_social, correo, id_unidad FROM proveedor WHERE id_proveedor = $1',
-      [idProveedor]
-    );
-    if (!proveedor.rows[0]) {
-      return respuesta.status(404).json({ exito: false, mensaje: 'Proveedor no encontrado.' });
-    }
-    if (peticion.usuario.idUnidad && proveedor.rows[0].id_unidad !== peticion.usuario.idUnidad) {
-      return respuesta.status(403).json({ exito: false, mensaje: 'No tiene permiso para asignar evaluaciones fuera de su unidad de negocio.' });
-    }
-
-    const tokenNuevo = crypto.randomBytes(24).toString('hex');
-    const resultado = await consultarBaseDatos(
-      `INSERT INTO evaluacion (id_campania, id_proveedor, token, estado)
-       VALUES ($1, $2, $3, 'Pendiente')
-       ON CONFLICT (id_campania, id_proveedor) DO UPDATE SET id_campania = EXCLUDED.id_campania
-       RETURNING id_evaluacion AS "idEvaluacion", token, estado`,
-      [id, idProveedor, tokenNuevo]
-    );
-
-    await registrarAuditoria({
-      idUsuario: peticion.usuario.idUsuario,
-      idEvaluacion: resultado.rows[0].idEvaluacion,
-      accion: `Asignó la evaluación de la campaña #${id} al proveedor ${proveedor.rows[0].razon_social}`
-    });
-
-    return respuesta.status(201).json({
-      exito: true,
-      evaluacion: resultado.rows[0],
-      enlace: `${process.env.URL_BASE_APP || 'http://localhost:5173'}/?token=${resultado.rows[0].token}`
-    });
-  } catch (error) {
-    console.error('Error al asignar evaluacion:', error);
-    return respuesta.status(500).json({ exito: false, mensaje: 'Error al asignar la evaluación.' });
   }
 };
 

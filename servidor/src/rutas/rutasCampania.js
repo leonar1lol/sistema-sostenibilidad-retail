@@ -5,7 +5,6 @@ import {
   crearCampania,
   cambiarEstadoCampania,
   listarEvaluacionesDeCampania,
-  asignarEvaluacion,
   enviarRecordatorio
 } from '../controladores/controladorCampania.js';
 
@@ -18,5 +17,4 @@ enrutadorCampania.post('/', requierePermiso('crear_publicar_campanias'), crearCa
 enrutadorCampania.patch('/:id/estado', requierePermiso('crear_publicar_campanias'), cambiarEstadoCampania);
 
 enrutadorCampania.get('/:id/evaluaciones', listarEvaluacionesDeCampania);
-enrutadorCampania.post('/:id/evaluaciones', requierePermiso('asignar_evaluaciones'), asignarEvaluacion);
 enrutadorCampania.post('/evaluaciones/:idEvaluacion/recordatorio', requierePermiso('asignar_evaluaciones'), enviarRecordatorio);

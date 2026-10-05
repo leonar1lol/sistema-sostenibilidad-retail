@@ -20,10 +20,7 @@ import {
   crearCampaniaApi,
   cambiarEstadoCampaniaApi,
   listarEvaluacionesDeCampaniaApi,
-  asignarEvaluacionApi,
   enviarRecordatorioApi,
-  listarUnidadesApi,
-  listarProveedoresAdminApi,
   tienePermiso
 } from '../../servicios/servicioApi.js';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
@@ -38,15 +35,12 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
   const puedeCrearCampanias = tienePermiso('crear_publicar_campanias');
   const puedeAsignarEvaluaciones = tienePermiso('asignar_evaluaciones');
   const [campanias, setCampanias] = useState([]);
-  const [unidades, setUnidades] = useState([]);
-  const [proveedores, setProveedores] = useState([]);
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [campaniaSeleccionada, setCampaniaSeleccionada] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [mostrarModalNueva, setMostrarModalNueva] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoPeriodo, setNuevoPeriodo] = useState('');
-  const [idProveedorAsignar, setIdProveedorAsignar] = useState('');
   const [enlaceCopiadoId, setEnlaceCopiadoId] = useState(null);
   const [busquedaEvaluacion, setBusquedaEvaluacion] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
@@ -55,15 +49,8 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
-      const [campaniasRemotas, unidadesRemotas, proveedoresRemotos] = await Promise.all([
-        listarCampaniasApi(),
-        listarUnidadesApi(),
-        listarProveedoresAdminApi()
-      ]);
+      const campaniasRemotas = await listarCampaniasApi();
       setCampanias(campaniasRemotas);
-      setUnidades(unidadesRemotas);
-      setProveedores(proveedoresRemotos);
-      setIdProveedorAsignar((actual) => actual || String(proveedoresRemotos[0]?.idProveedor ?? ''));
     } catch (error) {
       setMensajeError(error.message);
     } finally {
@@ -137,25 +124,6 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
     }
   };
 
-  const asignarEvaluacion = async () => {
-    if (!campaniaSeleccionada || !idProveedorAsignar) return;
-    try {
-      const resultado = await asignarEvaluacionApi(campaniaSeleccionada.idCampania, Number(idProveedorAsignar));
-      await cargarEvaluaciones(campaniaSeleccionada);
-      await copiarEnlace(resultado.enlace);
-      if (alRegistrarAuditoria) {
-        alRegistrarAuditoria({
-          accion: 'Asignación de evaluación',
-          modulo: 'Campañas',
-          detalles: `Evaluación asignada en la campaña ${campaniaSeleccionada.nombre}`
-        });
-      }
-      mostrarAviso('Evaluación asignada. Enlace copiado al portapapeles.');
-    } catch (error) {
-      setMensajeError(error.message);
-    }
-  };
-
   const enviarRecordatorio = async (evaluacion) => {
     try {
       await enviarRecordatorioApi(evaluacion.idEvaluacion);
@@ -208,7 +176,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             Campañas de Evaluación
           </h2>
           <p className="text-cuerpo-pequeno text-plataformaSecundario mt-0.5">
-            Planificación de periodos, emisión de enlaces corporativos por unidad y monitoreo de avances.
+            Planificación de periodos, enlace único de auto-registro y monitoreo de avances. Solo una campaña puede estar Publicada a la vez.
           </p>
         </div>
         {puedeCrearCampanias && (
@@ -339,75 +307,45 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
             </div>
           </div>
 
+          {puedeCrearCampanias && campaniaSeleccionada.estado !== 'Publicada' && (
+            <p className="text-subtexto text-plataformaSecundario -mt-2">
+              Al publicar esta campaña, cualquier otra campaña Publicada se cerrará automáticamente.
+            </p>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto">
-                Enlaces directos de auto-registro por Unidad de Negocio (RF12)
+                Enlace único de auto-registro (RF12)
               </h4>
               <span className="text-subtexto text-plataformaSecundario">
-                Comparta estos enlaces con los compradores de cada gerencia
+                El proveedor elige su industria y unidad de negocio al registrarse
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {unidades.map((u) => {
-                const enlace = `${window.location.origin}/?campania=${campaniaSeleccionada.idCampania}&unidad=${u.idUnidad}`;
-                const estaCopiado = enlaceCopiadoId === `unidad-${u.idUnidad}`;
-                return (
-                  <div
-                    key={u.idUnidad}
-                    className="flex items-center gap-2 p-3 rounded-md-token bg-black/[0.02] border border-black/[0.05] hover:border-black/[0.12] transition-colors"
+            {(() => {
+              const enlace = `${window.location.origin}/?campania=${campaniaSeleccionada.idCampania}`;
+              const estaCopiado = enlaceCopiadoId === 'campania';
+              return (
+                <div className="flex items-center gap-2 p-3 rounded-md-token bg-black/[0.02] border border-black/[0.05] hover:border-black/[0.12] transition-colors">
+                  <span className="text-[11px] font-mono text-plataformaSecundario truncate flex-1 select-all">
+                    {enlace}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copiarEnlace(enlace, 'campania')}
+                    className={`p-1.5 rounded-md-token transition-colors cursor-pointer shrink-0 ${
+                      estaCopiado
+                        ? 'bg-emerald-500/10 text-emerald-700'
+                        : 'hover:bg-black/[0.06] text-plataformaSecundario hover:text-plataformaAzul'
+                    }`}
+                    title="Copiar enlace al portapapeles"
                   >
-                    <span className="text-xs font-semibold text-plataformaTexto w-36 shrink-0 truncate">
-                      {u.nombre}
-                    </span>
-                    <span className="text-[11px] font-mono text-plataformaSecundario truncate flex-1 select-all">
-                      {enlace}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => copiarEnlace(enlace, `unidad-${u.idUnidad}`)}
-                      className={`p-1.5 rounded-md-token transition-colors cursor-pointer shrink-0 ${
-                        estaCopiado
-                          ? 'bg-emerald-500/10 text-emerald-700'
-                          : 'hover:bg-black/[0.06] text-plataformaSecundario hover:text-plataformaAzul'
-                      }`}
-                      title="Copiar enlace al portapapeles"
-                    >
-                      {estaCopiado ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                    {estaCopiado ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
-
-          {puedeAsignarEvaluaciones && (
-            <div className="p-4 rounded-lg-token bg-black/[0.015] border border-black/[0.05]">
-              <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto mb-2">
-                Asignar evaluación directa a un proveedor del padrón
-              </h4>
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <select
-                  value={idProveedorAsignar}
-                  onChange={(e) => setIdProveedorAsignar(e.target.value)}
-                  className="campo-select flex-1 w-full"
-                >
-                  {proveedores.map((p) => (
-                    <option key={p.idProveedor} value={p.idProveedor}>
-                      {p.razonSocial} — RUC: {p.ruc} ({p.unidad})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={asignarEvaluacion}
-                  className="boton-primario shrink-0 w-full sm:w-auto cursor-pointer"
-                >
-                  Asignar y copiar enlace
-                </button>
-              </div>
-            </div>
-          )}
 
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">

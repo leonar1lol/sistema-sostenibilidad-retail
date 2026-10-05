@@ -191,7 +191,7 @@ INSERT INTO permiso (codigo, descripcion) VALUES
 ('marcar_critico', 'Marcar/desmarcar proveedor como crítico'),
 ('configurar_banco_items', 'Configurar banco de ítems / dimensiones / reglas'),
 ('crear_publicar_campanias', 'Crear y publicar campañas'),
-('asignar_evaluaciones', 'Asignar evaluaciones / generar enlace de campaña'),
+('asignar_evaluaciones', 'Enviar recordatorios de evaluación a proveedores pendientes'),
 ('ver_dashboard_corporativo', 'Visualizar dashboard corporativo (7 unidades)'),
 ('ver_dashboard_unidad', 'Visualizar dashboard de su propia unidad'),
 ('exportar_reportes', 'Exportar reportes a Excel'),

@@ -101,6 +101,25 @@ export const editarItem = async (peticion, respuesta) => {
   }
 };
 
+export const eliminarItem = async (peticion, respuesta) => {
+  const { id } = peticion.params;
+  try {
+    await ejecutarTransaccion(async (cliente) => {
+      await cliente.query('DELETE FROM regla_condicional WHERE id_item_origen = $1 OR id_item_destino = $1', [id]);
+      await cliente.query('DELETE FROM item_industria WHERE id_item = $1', [id]);
+      await cliente.query('DELETE FROM alternativa WHERE id_item = $1', [id]);
+      await cliente.query('DELETE FROM item WHERE id_item = $1', [id]);
+    });
+    await registrarAuditoria({ idUsuario: peticion.usuario.idUsuario, accion: `Eliminó el ítem #${id} del banco de preguntas` });
+    return respuesta.status(200).json({ exito: true });
+  } catch (error) {
+    if (error.code === '23503') {
+      return respuesta.status(409).json({ exito: false, mensaje: 'No se puede eliminar: el ítem ya tiene respuestas registradas en evaluaciones.' });
+    }
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al eliminar el ítem.' });
+  }
+};
+
 export const actualizarIndustriasDelItem = async (peticion, respuesta) => {
   const { id } = peticion.params;
   const { idsIndustrias } = peticion.body;

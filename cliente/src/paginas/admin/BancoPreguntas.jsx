@@ -19,6 +19,7 @@ import {
 import {
   listarItemsBancoApi,
   crearItemBancoApi,
+  eliminarItemBancoApi,
   listarDimensionesApi,
   listarIndustriasApi,
   listarReglasCondicionalesApi,
@@ -179,6 +180,16 @@ export default function BancoPreguntas() {
       await eliminarReglaCondicionalApi(idRegla);
       await cargarDatos();
       mostrarAviso('Regla condicional eliminada.');
+    } catch (error) {
+      setMensajeError(error.message);
+    }
+  };
+
+  const borrarItem = async (idItem) => {
+    try {
+      await eliminarItemBancoApi(idItem);
+      await cargarDatos();
+      mostrarAviso('Ítem eliminado del banco de preguntas.');
     } catch (error) {
       setMensajeError(error.message);
     }
@@ -379,6 +390,16 @@ export default function BancoPreguntas() {
                                   <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md-token bg-black/[0.03] border border-black/[0.05] text-plataformaSecundario">
                                     Peso: {item.peso}x
                                   </span>
+                                  {puedeConfigurar && (
+                                    <button
+                                      type="button"
+                                      onClick={() => borrarItem(item.idItem)}
+                                      title="Eliminar ítem"
+                                      className="p-2 rounded-full hover:bg-rose-50 text-plataformaSecundario hover:text-rose-600 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 

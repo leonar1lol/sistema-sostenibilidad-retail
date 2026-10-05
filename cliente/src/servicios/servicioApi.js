@@ -239,6 +239,10 @@ export async function editarItemBancoApi(idItem, datosItem) {
   return peticionAutenticada(`/banco/items/${idItem}`, { method: 'PUT', body: JSON.stringify(datosItem) });
 }
 
+export async function eliminarItemBancoApi(idItem) {
+  return peticionAutenticada(`/banco/items/${idItem}`, { method: 'DELETE' });
+}
+
 export async function actualizarIndustriasItemApi(idItem, idsIndustrias) {
   return peticionAutenticada(`/banco/items/${idItem}/industrias`, { method: 'PUT', body: JSON.stringify({ idsIndustrias }) });
 }
@@ -282,10 +286,6 @@ export async function cambiarEstadoCampaniaApi(idCampania, estado) {
 export async function listarEvaluacionesDeCampaniaApi(idCampania) {
   const datos = await peticionAutenticada(`/campanias/${idCampania}/evaluaciones`);
   return datos.evaluaciones;
-}
-
-export async function asignarEvaluacionApi(idCampania, idProveedor) {
-  return peticionAutenticada(`/campanias/${idCampania}/evaluaciones`, { method: 'POST', body: JSON.stringify({ idProveedor }) });
 }
 
 export async function enviarRecordatorioApi(idEvaluacion) {
