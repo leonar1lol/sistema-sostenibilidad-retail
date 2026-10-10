@@ -1,9 +1,8 @@
 import React from 'react';
-import { LogOut, Leaf, Building2 } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 export default function CabeceraNavegacion({
   entornoActual,
-  alCambiarEntorno,
   sesionCorporativa,
   alCerrarSesionCorporativa
 }) {
@@ -30,34 +29,6 @@ export default function CabeceraNavegacion({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="inline-flex p-1 bg-black/[0.04] rounded-full border border-black/[0.06]">
-            <button
-              type="button"
-              onClick={() => alCambiarEntorno('proveedor')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                entornoActual === 'proveedor'
-                  ? 'bg-white text-plataformaTexto shadow-xs-token'
-                  : 'text-plataformaSecundario hover:text-plataformaTexto'
-              }`}
-            >
-              <Leaf className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Portal Proveedor</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alCambiarEntorno('corporativo')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                entornoActual === 'corporativo'
-                  ? 'bg-white text-plataformaTexto shadow-xs-token'
-                  : 'text-plataformaSecundario hover:text-plataformaTexto'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5 text-plataformaAzul" />
-              <span>Panel Corporativo</span>
-            </button>
-          </div>
-
           {entornoActual === 'corporativo' && sesionCorporativa && (
             <div className="flex items-center gap-3 pl-2 border-l border-black/[0.08]">
               <div className="flex flex-col items-end hidden lg:flex">

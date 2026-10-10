@@ -100,7 +100,7 @@ const IndicadorPasos = ({ pasoActual, alSeleccionarPaso }) => {
 };
 
 export default function AplicacionPrincipal() {
-  const [entornoActual, setEntornoActual] = useState(esRutaCorporativa() ? 'corporativo' : 'proveedor');
+  const entornoActual = esRutaCorporativa() ? 'corporativo' : 'proveedor';
   const [pasoPortal, setPasoPortal] = useState('acceso_otp');
   const [contextoEnlace] = useState(leerContextoEnlaceDesdeUrl);
   const [pestanaAdminActiva, setPestanaAdminActiva] = useState('resumen');
@@ -159,7 +159,6 @@ export default function AplicacionPrincipal() {
     <div className="min-h-screen bg-plataformaFondo flex flex-col font-sans">
       <CabeceraNavegacion
         entornoActual={entornoActual}
-        alCambiarEntorno={setEntornoActual}
         sesionCorporativa={sesionCorporativa}
         alCerrarSesionCorporativa={cerrarSesionCorporativa}
       />
