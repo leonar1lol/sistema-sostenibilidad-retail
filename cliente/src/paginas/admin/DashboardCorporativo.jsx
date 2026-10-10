@@ -155,9 +155,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
               Gestión Integral de Sostenibilidad de Proveedores
             </h2>
           </div>
-          <span className="text-subtexto text-plataformaSecundario">
-            Cobertura completa: Requerimientos Funcionales RF01 a RF16
-          </span>
         </div>
 
         <nav className="flex items-center gap-1 overflow-x-auto pb-1 mt-6 mb-8 border-b border-black/[0.06]">
@@ -172,9 +169,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
           >
             <BarChart3 className="w-4 h-4" />
             <span>Resumen</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
-              RF10
-            </span>
           </button>
 
           <button
@@ -193,9 +187,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
           >
             <Users className="w-4 h-4" />
             <span>Directorio ({proveedores.length})</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-              RF06/07
-            </span>
           </button>
 
           <button
@@ -209,9 +200,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
           >
             <Database className="w-4 h-4" />
             <span>Banco de Ítems</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
-              RF04/05
-            </span>
           </button>
 
           <button
@@ -225,9 +213,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
           >
             <Megaphone className="w-4 h-4" />
             <span>Campañas</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
-              RF12/21
-            </span>
           </button>
 
           {puedeAdministrarUsuarios && (
@@ -242,9 +227,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
             >
               <Shield className="w-4 h-4" />
               <span>Usuarios y Roles</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
-                RF02/03
-              </span>
             </button>
           )}
 
@@ -259,9 +241,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
           >
             <Sliders className="w-4 h-4" />
             <span>Configuración</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-semibold">
-              RF09/11
-            </span>
           </button>
 
           {puedeVerAuditoria && (
@@ -276,9 +255,6 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
             >
               <History className="w-4 h-4" />
               <span>Auditoría</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                RF16/24
-              </span>
             </button>
           )}
 
@@ -295,7 +271,7 @@ export default function DashboardCorporativo({ pestanaInicial = 'resumen', alCam
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Reportes y Auditoría</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-                RF13 / 6 Informes
+                6 Informes
               </span>
             </button>
           )}

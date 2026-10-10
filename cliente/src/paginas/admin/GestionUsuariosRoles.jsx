@@ -194,7 +194,7 @@ export default function GestionUsuariosRoles({ alRegistrarAuditoria }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Módulo de Seguridad y Accesos (RF02, RF03)
+            Módulo de Seguridad y Accesos
           </span>
           <h2 className="text-titulo-seccion">
             Gestión de Usuarios, Roles y Permisos

@@ -332,7 +332,7 @@ export default function GestionProveedores({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Gestión de Padrón Corporativo (RF06, RF07)
+            Gestión de Padrón Corporativo
           </span>
           <h2 className="text-titulo-seccion">
             Directorio de Proveedores
@@ -748,7 +748,7 @@ export default function GestionProveedores({
 
                 <div>
                   <span className="text-etiqueta text-plataformaSecundario block mb-2 font-semibold">
-                    Evidencias Documentales Adjuntadas (RF25)
+                    Evidencias Documentales Adjuntadas
                   </span>
                   <EvidenciaFicha idProveedor={proveedorSeleccionado.idProveedor} />
                 </div>

@@ -250,7 +250,7 @@ export default function CentroReportes({ proveedores = [], unidades = [] }) {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-medium mb-3 backdrop-blur-sm border border-white/15">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Módulo de Emisión Oficial • Requerimiento RF13</span>
+              <span>Módulo de Emisión Oficial</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Centro Corporativo de Reportes y Auditoría ESG

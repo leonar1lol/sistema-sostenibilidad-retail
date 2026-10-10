@@ -214,7 +214,7 @@ export default function BancoPreguntas() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Parametrización Corporativa (RF04, RF05, RF09)
+            Parametrización Corporativa
           </span>
           <h2 className="text-titulo-seccion">
             Banco de Preguntas y Reglas Condicionales
@@ -460,7 +460,7 @@ export default function BancoPreguntas() {
             <HelpCircle className="w-5 h-5 text-plataformaAzul shrink-0 mt-0.5" />
             <div>
               <h4 className="text-xs font-semibold text-blue-950">
-                ¿Cómo funciona el motor de reglas condicionales? (RF09)
+                ¿Cómo funciona el motor de reglas condicionales?
               </h4>
               <p className="text-xs text-blue-900/80 mt-0.5">
                 Las reglas permiten adaptar dinámicamente el cuestionario según las respuestas previas del proveedor. Cuando el proveedor selecciona la alternativa detonante en el ítem de origen, el ítem de destino se muestra, oculta o deshabilita en tiempo real sin recargar la página.

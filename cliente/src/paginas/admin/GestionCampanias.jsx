@@ -170,7 +170,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Gestión de Campañas (RF12, RF21)
+            Gestión de Campañas
           </span>
           <h2 className="text-titulo-seccion">
             Campañas de Evaluación
@@ -316,7 +316,7 @@ export default function GestionCampanias({ alRegistrarAuditoria }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-cuerpo-pequeno font-semibold text-plataformaTexto">
-                Enlace único de auto-registro (RF12)
+                Enlace único de auto-registro
               </h4>
               <span className="text-subtexto text-plataformaSecundario">
                 El proveedor elige su industria y unidad de negocio al registrarse

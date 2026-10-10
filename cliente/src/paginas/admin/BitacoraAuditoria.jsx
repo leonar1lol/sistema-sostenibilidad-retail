@@ -63,7 +63,7 @@ export default function BitacoraAuditoria() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Trazabilidad y Control Forense (RF16, RF24)
+            Trazabilidad y Control Forense
           </span>
           <h2 className="text-titulo-seccion text-plataformaTexto">
             Bitácora de Auditoría

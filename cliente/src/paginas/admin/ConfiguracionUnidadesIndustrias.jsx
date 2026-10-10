@@ -209,7 +209,7 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-etiqueta text-plataformaSecundario block mb-1">
-            Configuración Paramétrica (RF04, RF05, RF08)
+            Configuración Paramétrica
           </span>
           <h2 className="text-titulo-seccion">
             Unidades, Industrias y Dimensiones
@@ -327,7 +327,7 @@ export default function ConfiguracionUnidadesIndustrias({ alRegistrarAuditoria }
       ) : (
         <form onSubmit={guardarPesosDimensiones} className="superficie-tarjeta rounded-lg-token p-6 space-y-4">
           <p className="text-cuerpo-pequeno text-plataformaSecundario">
-            Los pesos de todas las dimensiones deben sumar 100%. Se usan para calcular el puntaje general de cada evaluación (RF18).
+            Los pesos de todas las dimensiones deben sumar 100%. Se usan para calcular el puntaje general de cada evaluación.
           </p>
           {dimensiones.map((d) => (
             <div key={d.idDimension} className="flex items-center justify-between gap-4">
