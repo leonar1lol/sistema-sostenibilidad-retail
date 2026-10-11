@@ -19,7 +19,9 @@ import {
   Mail,
   UserCheck,
   FileText,
-  Edit2
+  Edit2,
+  UploadCloud,
+  Trash2
 } from 'lucide-react';
 import { exportarProveedoresAExcel } from '../../utilidades/exportadorExcel.js';
 import {
@@ -30,6 +32,9 @@ import {
   listarUnidadesApi,
   listarIndustriasApi,
   listarEvidenciaProveedorAdminApi,
+  descargarPlantillaCargaMasivaProveedoresApi,
+  cargaMasivaProveedoresApi,
+  eliminarProveedoresMasivoApi,
   tienePermiso
 } from '../../servicios/servicioApi.js';
 import BarraProgreso from '../../componentes/BarraProgreso.jsx';
@@ -107,6 +112,17 @@ export default function GestionProveedores({
 
   const [edicionUnidades, setEdicionUnidades] = useState(null);
   const [guardandoUnidades, setGuardandoUnidades] = useState(false);
+
+  const [mostrarModalCargaMasiva, setMostrarModalCargaMasiva] = useState(false);
+  const [archivoCarga, setArchivoCarga] = useState(null);
+  const [descargandoPlantilla, setDescargandoPlantilla] = useState(false);
+  const [procesandoCarga, setProcesandoCarga] = useState(false);
+  const [reporteCarga, setReporteCarga] = useState(null);
+
+  const [idsSeleccionados, setIdsSeleccionados] = useState([]);
+  const [mostrarConfirmEliminar, setMostrarConfirmEliminar] = useState(false);
+  const [eliminandoMasivo, setEliminandoMasivo] = useState(false);
+  const [reporteEliminacion, setReporteEliminacion] = useState(null);
 
   useEffect(() => {
     setFiltroUnidad(filtroUnidadInicial);
@@ -305,6 +321,79 @@ export default function GestionProveedores({
     }
   };
 
+  const descargarPlantilla = async () => {
+    setDescargandoPlantilla(true);
+    setMensajeError('');
+    try {
+      await descargarPlantillaCargaMasivaProveedoresApi();
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setDescargandoPlantilla(false);
+    }
+  };
+
+  const subirArchivoCargaMasiva = async (e) => {
+    e.preventDefault();
+    if (!archivoCarga) {
+      setMensajeError('Seleccione un archivo .xlsx para continuar.');
+      return;
+    }
+    setProcesandoCarga(true);
+    setMensajeError('');
+    setReporteCarga(null);
+    try {
+      const resultado = await cargaMasivaProveedoresApi(archivoCarga);
+      setReporteCarga(resultado);
+      await cargarDatos();
+      if (resultado.resumen.creados + resultado.resumen.actualizados > 0) {
+        mostrarAviso(`Carga masiva aplicada: ${resultado.resumen.creados} creados, ${resultado.resumen.actualizados} actualizados.`);
+      }
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setProcesandoCarga(false);
+    }
+  };
+
+  const cerrarModalCargaMasiva = () => {
+    setMostrarModalCargaMasiva(false);
+    setArchivoCarga(null);
+    setReporteCarga(null);
+  };
+
+  const alternarSeleccionFila = (idProveedor) => {
+    setIdsSeleccionados((prev) =>
+      prev.includes(idProveedor) ? prev.filter((id) => id !== idProveedor) : [...prev, idProveedor]
+    );
+  };
+
+  const alternarSeleccionTodas = () => {
+    if (idsSeleccionados.length === proveedoresFiltrados.length) {
+      setIdsSeleccionados([]);
+    } else {
+      setIdsSeleccionados(proveedoresFiltrados.map((p) => p.idProveedor));
+    }
+  };
+
+  const confirmarEliminacionMasiva = async () => {
+    setEliminandoMasivo(true);
+    setMensajeError('');
+    try {
+      const resultado = await eliminarProveedoresMasivoApi(idsSeleccionados);
+      setReporteEliminacion(resultado);
+      setIdsSeleccionados([]);
+      await cargarDatos();
+      if (resultado.resumen.eliminados > 0) {
+        mostrarAviso(`${resultado.resumen.eliminados} proveedor(es) eliminado(s).`);
+      }
+    } catch (error) {
+      setMensajeError(error.message);
+    } finally {
+      setEliminandoMasivo(false);
+    }
+  };
+
   const obtenerNivelEsg = (puntaje) => {
     if (puntaje === null || puntaje === undefined) return { etiqueta: 'Sin evaluar', clase: 'insignia-neutra' };
     const num = Number(puntaje);
@@ -354,6 +443,15 @@ export default function GestionProveedores({
           )}
           {puedeMarcarCritico && (
             <button
+              onClick={() => setMostrarModalCargaMasiva(true)}
+              className="boton-secundario flex items-center gap-1.5 cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Carga masiva</span>
+            </button>
+          )}
+          {puedeMarcarCritico && (
+            <button
               onClick={() => setMostrarModalNuevo(true)}
               className="boton-primario flex items-center gap-1.5 cursor-pointer"
             >
@@ -363,6 +461,31 @@ export default function GestionProveedores({
           )}
         </div>
       </div>
+
+      {puedeMarcarCritico && idsSeleccionados.length > 0 && (
+        <div className="superficie-tarjeta rounded-lg-token p-3.5 flex items-center justify-between gap-3 border border-amber-300/50 bg-amber-50/60">
+          <span className="text-cuerpo-pequeno text-amber-900 font-medium">
+            {idsSeleccionados.length} proveedor(es) seleccionado(s)
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIdsSeleccionados([])}
+              className="boton-secundario text-xs cursor-pointer"
+            >
+              Deseleccionar
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarConfirmEliminar(true)}
+              className="px-3 py-2 rounded-md-token bg-red-600 text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-red-700 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Eliminar seleccionados</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="superficie-tarjeta rounded-lg-token p-4 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
@@ -449,6 +572,16 @@ export default function GestionProveedores({
           <table className="tabla-premium w-full text-left">
             <thead>
               <tr>
+                {puedeMarcarCritico && (
+                  <th className="w-10">
+                    <input
+                      type="checkbox"
+                      checked={proveedoresFiltrados.length > 0 && idsSeleccionados.length === proveedoresFiltrados.length}
+                      onChange={alternarSeleccionTodas}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th>Proveedor</th>
                 <th>RUC</th>
                 <th>Unidad de Negocio</th>
@@ -462,13 +595,13 @@ export default function GestionProveedores({
             <tbody>
               {cargando ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-plataformaSecundario">
+                  <td colSpan={9} className="py-12 text-center text-plataformaSecundario">
                     Cargando datos reales desde el servidor…
                   </td>
                 </tr>
               ) : proveedoresFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <div className="estado-vacio py-12 text-center text-plataformaSecundario flex flex-col items-center">
                       <Search className="w-8 h-8 mb-3 opacity-50" />
                       <span>No se encontraron proveedores que coincidan con los criterios de búsqueda.</span>
@@ -496,6 +629,16 @@ export default function GestionProveedores({
                       }}
                       className="cursor-pointer hover:bg-black/[0.015] transition-colors"
                     >
+                      {puedeMarcarCritico && (
+                        <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={idsSeleccionados.includes(prov.idProveedor)}
+                            onChange={() => alternarSeleccionFila(prov.idProveedor)}
+                            className="cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-plataformaTexto">{prov.razonSocial}</div>
                         <div className="text-subtexto text-plataformaSecundario">{prov.representante || 'Sin representante registrado'}</div>
@@ -1089,6 +1232,192 @@ export default function GestionProveedores({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {mostrarModalCargaMasiva && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4 overflow-y-auto py-10">
+          <div className="contenido-modal max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-plataformaAzul block uppercase">Padrón Corporativo</span>
+                <h3 className="text-titulo-seccion mt-1">Carga Masiva de Proveedores</h3>
+                <p className="text-subtexto text-plataformaSecundario mt-0.5">
+                  Cree y actualice proveedores a partir de un archivo Excel. El RUC define si se crea un proveedor nuevo o se actualiza uno existente.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarModalCargaMasiva}
+                className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg-token bg-black/[0.02] border border-black/[0.05] flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-cuerpo-pequeno font-semibold text-plataformaTexto">1. Descargue la plantilla</p>
+                  <p className="text-subtexto text-plataformaSecundario">Incluye instrucciones por campo y las listas de industrias y unidades válidas.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={descargarPlantilla}
+                  disabled={descargandoPlantilla}
+                  className="boton-secundario text-xs flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{descargandoPlantilla ? 'Generando...' : 'Descargar plantilla'}</span>
+                </button>
+              </div>
+
+              <form onSubmit={subirArchivoCargaMasiva} className="p-4 rounded-lg-token bg-black/[0.02] border border-black/[0.05] space-y-3">
+                <p className="text-cuerpo-pequeno font-semibold text-plataformaTexto">2. Suba el archivo completado (máximo 1000 filas, .xlsx)</p>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={(e) => setArchivoCarga(e.target.files?.[0] || null)}
+                  className="campo-entrada w-full text-xs"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={procesandoCarga || !archivoCarga}
+                    className="boton-primario text-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {procesandoCarga ? 'Procesando...' : 'Subir y procesar'}
+                  </button>
+                </div>
+              </form>
+
+              {reporteCarga && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="insignia-exito">Creados: {reporteCarga.resumen.creados}</span>
+                    <span className="insignia-info">Actualizados: {reporteCarga.resumen.actualizados}</span>
+                    <span className="insignia-peligro">Rechazados: {reporteCarga.resumen.rechazados}</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto rounded-md-token border border-black/[0.06]">
+                    <table className="tabla-premium w-full text-left text-xs">
+                      <thead>
+                        <tr>
+                          <th>Fila</th>
+                          <th>RUC</th>
+                          <th>Resultado</th>
+                          <th>Detalle</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reporteCarga.filas.map((f) => (
+                          <tr key={f.fila}>
+                            <td className="py-2 px-3 font-mono">{f.fila}</td>
+                            <td className="py-2 px-3 font-mono">{f.ruc}</td>
+                            <td className="py-2 px-3">
+                              <span className={
+                                f.estado === 'rechazado' ? 'insignia-peligro'
+                                  : f.estado === 'creado' ? 'insignia-exito'
+                                  : 'insignia-info'
+                              }>
+                                {f.estado}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-plataformaSecundario">{f.mensaje || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-5 mt-5 border-t border-black/[0.06]">
+              <button type="button" onClick={cerrarModalCargaMasiva} className="boton-primario cursor-pointer">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarConfirmEliminar && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <div className="contenido-modal max-w-md w-full p-8">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <span className="text-etiqueta text-red-600 block uppercase">Acción irreversible</span>
+                <h3 className="text-titulo-seccion mt-1">Eliminar Proveedores</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmEliminar(false)}
+                className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-cuerpo-pequeno text-plataformaTexto mb-6">
+              Va a eliminar <strong>{idsSeleccionados.length}</strong> proveedor(es) del padrón corporativo. Los proveedores con evaluaciones o accesos registrados no podrán eliminarse, para no perder trazabilidad; se le informará cuáles y por qué.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmEliminar(false)}
+                className="boton-secundario cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await confirmarEliminacionMasiva();
+                  setMostrarConfirmEliminar(false);
+                }}
+                disabled={eliminandoMasivo}
+                className="px-4 py-2 rounded-md-token bg-red-600 text-white text-xs font-semibold cursor-pointer hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {eliminandoMasivo ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reporteEliminacion && (
+        <div className="overlay-modal !m-0 flex items-center justify-center p-4">
+          <div className="contenido-modal max-w-lg w-full p-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-5">
+              <h3 className="text-titulo-seccion">Resultado de la Eliminación</h3>
+              <button
+                type="button"
+                onClick={() => setReporteEliminacion(null)}
+                className="p-2 rounded-full hover:bg-black/[0.04] text-plataformaSecundario cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-xs mb-3">
+              <span className="insignia-exito">Eliminados: {reporteEliminacion.resumen.eliminados}</span>
+              <span className="insignia-peligro">Bloqueados: {reporteEliminacion.resumen.bloqueados}</span>
+            </div>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {reporteEliminacion.filas.map((f) => (
+                <div key={f.idProveedor} className="p-2.5 rounded-md-token bg-black/[0.02] border border-black/[0.04] text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium text-plataformaTexto">{f.razonSocial || `Proveedor #${f.idProveedor}`}</span>
+                    <span className={f.estado === 'eliminado' ? 'insignia-exito shrink-0' : 'insignia-peligro shrink-0'}>{f.estado}</span>
+                  </div>
+                  {f.mensaje && <p className="text-plataformaSecundario mt-1">{f.mensaje}</p>}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-5 mt-5 border-t border-black/[0.06]">
+              <button type="button" onClick={() => setReporteEliminacion(null)} className="boton-primario cursor-pointer">
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

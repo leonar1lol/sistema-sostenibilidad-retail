@@ -317,6 +317,56 @@ export async function editarRazonSocialProveedorApi(idProveedor, razonSocial) {
   return datos.proveedor;
 }
 
+export async function descargarPlantillaCargaMasivaProveedoresApi() {
+  const token = localStorage.getItem('tokenSesionCorporativa');
+  const respuesta = await fetch(`${URL_BASE_API}/proveedores/carga-masiva/plantilla`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!respuesta.ok) {
+    let mensaje = 'Error al descargar la plantilla.';
+    try {
+      const datos = await respuesta.json();
+      mensaje = datos.mensaje || mensaje;
+    } catch {
+      // la respuesta no era JSON (p. ej. el propio archivo); se conserva el mensaje genérico
+    }
+    throw new Error(mensaje);
+  }
+  const blob = await respuesta.blob();
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = 'plantilla_carga_masiva_proveedores.xlsx';
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+  URL.revokeObjectURL(url);
+}
+
+export async function cargaMasivaProveedoresApi(archivo) {
+  const token = localStorage.getItem('tokenSesionCorporativa');
+  const formulario = new FormData();
+  formulario.append('archivo', archivo);
+
+  const respuesta = await fetch(`${URL_BASE_API}/proveedores/carga-masiva`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formulario
+  });
+  const datos = await respuesta.json();
+  if (!respuesta.ok || !datos.exito) {
+    throw new Error(datos.mensaje || 'Error al procesar la carga masiva.');
+  }
+  return datos;
+}
+
+export async function eliminarProveedoresMasivoApi(idsProveedor) {
+  return peticionAutenticada('/proveedores/eliminar-masivo', {
+    method: 'POST',
+    body: JSON.stringify({ idsProveedor })
+  });
+}
+
 export async function listarAuditoriaApi() {
   const datos = await peticionAutenticada('/auditoria');
   return datos.registros;

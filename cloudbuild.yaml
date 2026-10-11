@@ -4,7 +4,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api']
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['run', 'deploy', 'plataforma-sostenibilidad-api', '--image=gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api', '--region=us-east1', '--platform=managed']
+    args: ['run', 'deploy', 'plataforma-sostenibilidad-api', '--image=gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api', '--region=us-east1', '--platform=managed', '--timeout=540']
 images:
   - 'gcr.io/$PROJECT_ID/plataforma-sostenibilidad-api'
 options:

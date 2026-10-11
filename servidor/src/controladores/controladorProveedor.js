@@ -208,6 +208,87 @@ export const editarRazonSocial = async (peticion, respuesta) => {
   }
 };
 
+export const eliminarProveedoresMasivo = async (peticion, respuesta) => {
+  const idsProveedor = Array.isArray(peticion.body.idsProveedor)
+    ? [...new Set(peticion.body.idsProveedor.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+    : [];
+
+  if (idsProveedor.length === 0) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Debe seleccionar al menos un proveedor para eliminar.' });
+  }
+  if (idsProveedor.length > 200) {
+    return respuesta.status(400).json({ exito: false, mensaje: 'Puede eliminar como máximo 200 proveedores por operación.' });
+  }
+
+  const esCorporativo = !peticion.usuario.idUnidad;
+
+  try {
+    const reporte = await ejecutarTransaccion(async (cliente) => {
+      const salida = [];
+      for (const idProveedor of idsProveedor) {
+        const proveedorFila = await cliente.query(
+          `SELECT p.id_proveedor AS "idProveedor", p.razon_social AS "razonSocial",
+                  ($2::boolean OR EXISTS (
+                    SELECT 1 FROM proveedor_unidad_negocio x WHERE x.id_proveedor = p.id_proveedor AND x.id_unidad = $3
+                  )) AS "dentroDeAlcance"
+           FROM proveedor p WHERE p.id_proveedor = $1`,
+          [idProveedor, esCorporativo, peticion.usuario.idUnidad]
+        );
+        const proveedor = proveedorFila.rows[0];
+
+        if (!proveedor) {
+          salida.push({ idProveedor, razonSocial: null, estado: 'bloqueado', mensaje: 'Proveedor no encontrado.' });
+          continue;
+        }
+        if (!proveedor.dentroDeAlcance) {
+          salida.push({ idProveedor, razonSocial: proveedor.razonSocial, estado: 'bloqueado', mensaje: 'Fuera de su unidad de negocio.' });
+          continue;
+        }
+
+        const dependencias = await cliente.query(
+          `SELECT
+             (SELECT COUNT(*) FROM evaluacion WHERE id_proveedor = $1) AS evaluaciones,
+             (SELECT COUNT(*) FROM codigo_otp WHERE id_proveedor = $1) AS accesos`,
+          [idProveedor]
+        );
+        const { evaluaciones, accesos } = dependencias.rows[0];
+        if (Number(evaluaciones) > 0 || Number(accesos) > 0) {
+          salida.push({
+            idProveedor,
+            razonSocial: proveedor.razonSocial,
+            estado: 'bloqueado',
+            mensaje: `Tiene ${evaluaciones} evaluación(es) y ${accesos} acceso(s) registrados; no se puede eliminar sin perder trazabilidad.`
+          });
+          continue;
+        }
+
+        await cliente.query('DELETE FROM proveedor_unidad_negocio WHERE id_proveedor = $1', [idProveedor]);
+        await cliente.query('DELETE FROM proveedor WHERE id_proveedor = $1', [idProveedor]);
+        salida.push({ idProveedor, razonSocial: proveedor.razonSocial, estado: 'eliminado', mensaje: null });
+      }
+
+      const eliminados = salida.filter((s) => s.estado === 'eliminado').length;
+      const bloqueados = salida.filter((s) => s.estado === 'bloqueado').length;
+      await registrarAuditoria({
+        idUsuario: peticion.usuario.idUsuario,
+        accion: `Eliminación masiva de proveedores: ${eliminados} eliminados, ${bloqueados} bloqueados`,
+        cliente
+      });
+
+      return salida;
+    });
+
+    const resumen = {
+      total: reporte.length,
+      eliminados: reporte.filter((r) => r.estado === 'eliminado').length,
+      bloqueados: reporte.filter((r) => r.estado === 'bloqueado').length
+    };
+    return respuesta.status(200).json({ exito: true, resumen, filas: reporte });
+  } catch (error) {
+    return respuesta.status(500).json({ exito: false, mensaje: 'Error al eliminar los proveedores seleccionados.' });
+  }
+};
+
 export const obtenerDatosMaestros = async (peticion, respuesta) => {
   try {
     const resIndustrias = await consultarBaseDatos('SELECT id_industria, codigo, nombre FROM industria ORDER BY id_industria ASC;');
